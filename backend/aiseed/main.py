@@ -8,7 +8,11 @@ Dual-licensed with a Commercial License. See LICENSE for details.
 """
 import asyncio
 import os
-from fastapi import FastAPI, HTTPException, Header, Request
+import logging
+import aiosqlite
+from contextlib import asynccontextmanager
+from pathlib import Path
+from fastapi import FastAPI, HTTPException, Header, Request, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional
@@ -16,10 +20,95 @@ from claude_agent_sdk import query, ClaudeAgentOptions
 from collections import defaultdict
 from datetime import datetime, timedelta
 
+# ==================== ログ設定 ====================
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+LOG_FORMAT = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL, logging.INFO),
+    format=LOG_FORMAT,
+    handlers=[
+        logging.StreamHandler(),
+    ]
+)
+logger = logging.getLogger("aiseed")
+
+# ==================== データベース設定 ====================
+DB_PATH = Path(__file__).parent / "aiseed.db"
+db_connection: Optional[aiosqlite.Connection] = None
+
+async def init_db():
+    """データベース初期化"""
+    global db_connection
+    logger.info(f"データベース初期化: {DB_PATH}")
+    db_connection = await aiosqlite.connect(DB_PATH)
+
+    # テーブル作成
+    await db_connection.executescript("""
+        -- APIキー管理
+        CREATE TABLE IF NOT EXISTS api_keys (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            key TEXT UNIQUE NOT NULL,
+            user_id TEXT NOT NULL,
+            plan TEXT DEFAULT 'free',
+            rate_limit INTEGER DEFAULT 10,
+            is_active INTEGER DEFAULT 1,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            last_used_at TEXT
+        );
+
+        -- 会話履歴
+        CREATE TABLE IF NOT EXISTS conversations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            user_id TEXT,
+            service TEXT NOT NULL,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        -- リクエストログ
+        CREATE TABLE IF NOT EXISTS request_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            client_ip TEXT,
+            user_id TEXT,
+            endpoint TEXT NOT NULL,
+            service TEXT,
+            status_code INTEGER,
+            response_time_ms INTEGER,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        -- インデックス
+        CREATE INDEX IF NOT EXISTS idx_api_keys_key ON api_keys(key);
+        CREATE INDEX IF NOT EXISTS idx_conversations_session ON conversations(session_id);
+        CREATE INDEX IF NOT EXISTS idx_request_logs_created ON request_logs(created_at);
+    """)
+    await db_connection.commit()
+    logger.info("データベース初期化完了")
+
+async def close_db():
+    """データベース接続クローズ"""
+    global db_connection
+    if db_connection:
+        await db_connection.close()
+        logger.info("データベース接続クローズ")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """アプリケーションライフサイクル管理"""
+    await init_db()
+    logger.info("AIseed Server 起動")
+    yield
+    await close_db()
+    logger.info("AIseed Server 停止")
+
 app = FastAPI(
     title="AIseed API",
     description="AIと人が共に成長するプラットフォーム",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # 同一オリジンでのデプロイを想定（CORS不要）
@@ -29,6 +118,94 @@ app = FastAPI(
 # 簡易的なレート制限（メモリベース）
 # 本番環境ではRedisやデータベースを使用することを推奨
 rate_limit_storage = defaultdict(list)
+
+# ==================== DB ヘルパー関数 ====================
+
+async def log_request(
+    client_ip: str,
+    endpoint: str,
+    service: Optional[str] = None,
+    user_id: Optional[str] = None,
+    status_code: int = 200,
+    response_time_ms: int = 0
+):
+    """リクエストログをDBに記録"""
+    if db_connection:
+        try:
+            await db_connection.execute(
+                """INSERT INTO request_logs
+                   (client_ip, user_id, endpoint, service, status_code, response_time_ms)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (client_ip, user_id, endpoint, service, status_code, response_time_ms)
+            )
+            await db_connection.commit()
+        except Exception as e:
+            logger.error(f"リクエストログ記録エラー: {e}")
+
+async def save_conversation(
+    session_id: str,
+    service: str,
+    role: str,
+    content: str,
+    user_id: Optional[str] = None
+):
+    """会話履歴をDBに保存"""
+    if db_connection:
+        try:
+            await db_connection.execute(
+                """INSERT INTO conversations
+                   (session_id, user_id, service, role, content)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (session_id, user_id, service, role, content)
+            )
+            await db_connection.commit()
+        except Exception as e:
+            logger.error(f"会話履歴保存エラー: {e}")
+
+async def verify_api_key_from_db(api_key: str) -> Optional[dict]:
+    """DBからAPIキーを検証"""
+    if not db_connection:
+        return None
+
+    try:
+        cursor = await db_connection.execute(
+            """SELECT user_id, plan, rate_limit, is_active
+               FROM api_keys WHERE key = ?""",
+            (api_key,)
+        )
+        row = await cursor.fetchone()
+
+        if row and row[3]:  # is_active
+            # last_used_at を更新
+            await db_connection.execute(
+                "UPDATE api_keys SET last_used_at = ? WHERE key = ?",
+                (datetime.now().isoformat(), api_key)
+            )
+            await db_connection.commit()
+            return {
+                "user_id": row[0],
+                "plan": row[1],
+                "rate_limit": row[2]
+            }
+    except Exception as e:
+        logger.error(f"APIキー検証エラー: {e}")
+
+    return None
+
+async def create_api_key(user_id: str, plan: str = "free") -> str:
+    """新しいAPIキーを作成"""
+    import secrets
+    api_key = f"aiseed_{secrets.token_hex(16)}"
+
+    if db_connection:
+        await db_connection.execute(
+            """INSERT INTO api_keys (key, user_id, plan) VALUES (?, ?, ?)""",
+            (api_key, user_id, plan)
+        )
+        await db_connection.commit()
+        logger.info(f"新しいAPIキー作成: user_id={user_id}, plan={plan}")
+
+    return api_key
 
 # リクエスト/レスポンスモデル
 class ConversationRequest(BaseModel):
@@ -91,6 +268,24 @@ PROMPTS = {
 - 技術知識がなくても大丈夫
 - ユーザーの希望を引き出す
 - シンプルで美しいデザイン
+""",
+    "learn": """
+あなたは「プログラミング学習パートナー」です。
+ユーザーと一緒にプログラミングを学んでいくサポートをしてください。
+
+【できること】
+- プログラミングの基礎概念の説明
+- コードの書き方・読み方のガイド
+- エラーの解決サポート
+- 実践的なプロジェクト提案
+- 学習ロードマップの作成
+
+【スタンス】
+- 教えるのではなく一緒に考える
+- 失敗を恐れない雰囲気作り
+- 小さな成功体験を大切に
+- ユーザーのペースに合わせる
+- 「なぜ」を大切にする
 """
 }
 
@@ -172,7 +367,7 @@ async def public_root():
     return {
         "message": "AIseed Public API",
         "status": "running",
-        "services": ["spark", "grow", "create"],
+        "services": ["spark", "grow", "learn", "create"],
         "note": "Web用の制限付きAPI"
     }
 
@@ -198,6 +393,8 @@ async def public_conversation(request: ConversationRequest, req: Request):
     message_lower = request.user_message.lower()
     if any(word in message_lower for word in ["野菜", "栽培", "料理", "レシピ", "育て"]):
         service = "grow"
+    elif any(word in message_lower for word in ["プログラミング", "コード", "python", "javascript", "エラー", "バグ", "関数", "変数"]):
+        service = "learn"
     elif any(word in message_lower for word in ["web", "サイト", "ホームページ", "デザイン"]):
         service = "create"
     
@@ -205,24 +402,39 @@ async def public_conversation(request: ConversationRequest, req: Request):
 
 # ==================== Authenticated API (アプリ用、認証必須) ====================
 
-async def verify_api_key(x_api_key: str = Header(..., alias="X-API-Key")):
+async def verify_api_key(x_api_key: str = Header(None, alias="X-API-Key")):
     """
-    API キー認証（簡易版）
-    本番環境ではデータベースで管理することを推奨
+    API キー認証
+    DBまたは環境変数から検証
     """
-    # 環境変数から有効なAPIキーを取得
+    # 開発モード判定
+    dev_mode = os.getenv("DEV_MODE", "false").lower() == "true"
+
+    if not x_api_key:
+        if dev_mode:
+            logger.debug("開発モード: APIキーなしでアクセス許可")
+            return {"user_id": "dev", "plan": "dev", "rate_limit": 100}
+        raise HTTPException(status_code=401, detail="APIキーが必要です")
+
+    # DBから検証
+    user_info = await verify_api_key_from_db(x_api_key)
+    if user_info:
+        logger.debug(f"APIキー認証成功: user_id={user_info['user_id']}")
+        return user_info
+
+    # 環境変数からも検証（フォールバック）
     valid_keys = os.getenv("API_KEYS", "").split(",")
     valid_keys = [key.strip() for key in valid_keys if key.strip()]
-    
-    if not valid_keys:
-        # APIキーが設定されていない場合は開発モード
-        return {"user_id": "dev", "plan": "dev"}
-    
-    if x_api_key not in valid_keys:
-        raise HTTPException(status_code=403, detail="無効なAPIキーです")
-    
-    # 簡易的なユーザー情報を返す
-    return {"user_id": x_api_key[:8], "plan": "free"}
+
+    if x_api_key in valid_keys:
+        return {"user_id": x_api_key[:8], "plan": "free", "rate_limit": 10}
+
+    # 開発モードならAPIキーが無効でも許可
+    if dev_mode:
+        logger.warning(f"開発モード: 無効なAPIキーを許可: {x_api_key[:8]}...")
+        return {"user_id": "dev", "plan": "dev", "rate_limit": 100}
+
+    raise HTTPException(status_code=403, detail="無効なAPIキーです")
 
 @app.get("/v1/")
 async def v1_root():
@@ -230,42 +442,63 @@ async def v1_root():
     return {
         "message": "AIseed Authenticated API v1",
         "status": "running",
-        "services": ["spark", "grow", "create"],
+        "services": ["spark", "grow", "learn", "create"],
         "note": "認証が必要なAPI"
     }
 
 @app.post("/v1/spark/conversation", response_model=ConversationResponse)
 async def v1_spark_conversation(
     request: ConversationRequest,
-    user_info: dict = Header(default=None, alias="X-API-Key")
+    req: Request,
+    user_info: dict = Depends(verify_api_key)
 ):
     """Authenticated API - Spark（強み発見）"""
-    # 本番環境では verify_api_key を使用
-    # user_info = await verify_api_key(user_info)
+    logger.info(f"[Spark] user={user_info['user_id']} message={request.user_message[:50]}...")
+    await log_request(req.client.host, "/v1/spark/conversation", "spark", user_info["user_id"])
     return await handle_conversation("spark", request)
 
 @app.post("/v1/grow/conversation", response_model=ConversationResponse)
 async def v1_grow_conversation(
     request: ConversationRequest,
-    user_info: dict = Header(default=None, alias="X-API-Key")
+    req: Request,
+    user_info: dict = Depends(verify_api_key)
 ):
     """Authenticated API - Grow（栽培・料理）"""
+    logger.info(f"[Grow] user={user_info['user_id']} message={request.user_message[:50]}...")
+    await log_request(req.client.host, "/v1/grow/conversation", "grow", user_info["user_id"])
     return await handle_conversation("grow", request)
 
 @app.post("/v1/create/conversation", response_model=ConversationResponse)
 async def v1_create_conversation(
     request: ConversationRequest,
-    user_info: dict = Header(default=None, alias="X-API-Key")
+    req: Request,
+    user_info: dict = Depends(verify_api_key)
 ):
     """Authenticated API - Create（Web制作）"""
+    logger.info(f"[Create] user={user_info['user_id']} message={request.user_message[:50]}...")
+    await log_request(req.client.host, "/v1/create/conversation", "create", user_info["user_id"])
     return await handle_conversation("create", request)
+
+@app.post("/v1/learn/conversation", response_model=ConversationResponse)
+async def v1_learn_conversation(
+    request: ConversationRequest,
+    req: Request,
+    user_info: dict = Depends(verify_api_key)
+):
+    """Authenticated API - Learn（プログラミング学習）"""
+    logger.info(f"[Learn] user={user_info['user_id']} message={request.user_message[:50]}...")
+    await log_request(req.client.host, "/v1/learn/conversation", "learn", user_info["user_id"])
+    return await handle_conversation("learn", request)
 
 @app.post("/v1/analyze", response_model=StrengthAnalysis)
 async def v1_analyze_strengths(
     conversation_history: list[dict],
-    user_info: dict = Header(default=None, alias="X-API-Key")
+    req: Request,
+    user_info: dict = Depends(verify_api_key)
 ):
     """Authenticated API - 強み分析"""
+    logger.info(f"[Analyze] user={user_info['user_id']} history_len={len(conversation_history)}")
+    await log_request(req.client.host, "/v1/analyze", "spark", user_info["user_id"])
     
     history = "\n".join([
         f"{'ユーザー' if msg.get('role') == 'user' else 'AI'}: {msg.get('content', '')}"
@@ -317,9 +550,89 @@ async def root():
         "version": "1.0.0",
         "endpoints": {
             "public": "/public/",
-            "authenticated": "/v1/"
+            "authenticated": "/v1/",
+            "admin": "/admin/"
         }
     }
+
+@app.get("/health")
+async def health_check():
+    """ヘルスチェック"""
+    db_status = "connected" if db_connection else "disconnected"
+    return {
+        "status": "healthy",
+        "database": db_status,
+        "timestamp": datetime.now().isoformat()
+    }
+
+# ==================== Admin API (開発・管理用) ====================
+
+class CreateApiKeyRequest(BaseModel):
+    user_id: str
+    plan: str = "free"
+
+class ApiKeyResponse(BaseModel):
+    api_key: str
+    user_id: str
+    plan: str
+
+@app.post("/admin/api-keys", response_model=ApiKeyResponse)
+async def admin_create_api_key(request: CreateApiKeyRequest):
+    """
+    APIキー作成（開発用）
+    本番環境では適切な認証を追加すること
+    """
+    dev_mode = os.getenv("DEV_MODE", "false").lower() == "true"
+    if not dev_mode:
+        raise HTTPException(status_code=403, detail="開発モードでのみ利用可能")
+
+    api_key = await create_api_key(request.user_id, request.plan)
+    logger.info(f"[Admin] APIキー作成: user_id={request.user_id}")
+
+    return ApiKeyResponse(
+        api_key=api_key,
+        user_id=request.user_id,
+        plan=request.plan
+    )
+
+@app.get("/admin/stats")
+async def admin_stats():
+    """
+    統計情報取得（開発用）
+    """
+    dev_mode = os.getenv("DEV_MODE", "false").lower() == "true"
+    if not dev_mode:
+        raise HTTPException(status_code=403, detail="開発モードでのみ利用可能")
+
+    if not db_connection:
+        return {"error": "データベース未接続"}
+
+    # 統計情報を取得
+    stats = {}
+
+    # APIキー数
+    cursor = await db_connection.execute("SELECT COUNT(*) FROM api_keys")
+    row = await cursor.fetchone()
+    stats["total_api_keys"] = row[0] if row else 0
+
+    # 会話数
+    cursor = await db_connection.execute("SELECT COUNT(*) FROM conversations")
+    row = await cursor.fetchone()
+    stats["total_conversations"] = row[0] if row else 0
+
+    # リクエスト数
+    cursor = await db_connection.execute("SELECT COUNT(*) FROM request_logs")
+    row = await cursor.fetchone()
+    stats["total_requests"] = row[0] if row else 0
+
+    # サービス別リクエスト数
+    cursor = await db_connection.execute(
+        "SELECT service, COUNT(*) FROM request_logs WHERE service IS NOT NULL GROUP BY service"
+    )
+    rows = await cursor.fetchall()
+    stats["requests_by_service"] = {row[0]: row[1] for row in rows}
+
+    return stats
 
 if __name__ == "__main__":
     import uvicorn

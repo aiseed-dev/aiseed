@@ -59,12 +59,12 @@ def test_public_api():
 def test_authenticated_api():
     """Authenticated API のテスト"""
     print("=== Authenticated API (アプリ用) ===")
-    
+
     # ステータス確認
     response = requests.get(f"{BASE_URL}/v1/")
     print(f"Status: {response.status_code}")
     print(f"Response: {json.dumps(response.json(), indent=2, ensure_ascii=False)}\n")
-    
+
     # API キーなしでアクセス（開発モード）
     print("--- Spark 会話テスト (認証なし - 開発モード) ---")
     payload = {
@@ -79,6 +79,64 @@ def test_authenticated_api():
         print(f"AI Response: {data['ai_message'][:100]}...\n")
     else:
         print(f"Error: {response.text}\n")
+
+    # Learn 会話テスト
+    print("--- Learn 会話テスト ---")
+    payload = {
+        "user_message": "Pythonでループの書き方を教えてください",
+        "conversation_history": []
+    }
+    response = requests.post(f"{BASE_URL}/v1/learn/conversation", json=payload)
+    print(f"Status: {response.status_code}")
+    if response.status_code == 200:
+        data = response.json()
+        print(f"Service: {data['service']}")
+        print(f"AI Response: {data['ai_message'][:100]}...\n")
+    else:
+        print(f"Error: {response.text}\n")
+
+def test_health_and_admin():
+    """ヘルスチェックと管理APIのテスト"""
+    print("=== ヘルスチェック ===")
+    response = requests.get(f"{BASE_URL}/health")
+    print(f"Status: {response.status_code}")
+    print(f"Response: {json.dumps(response.json(), indent=2, ensure_ascii=False)}\n")
+
+    print("=== Admin API (開発モード) ===")
+
+    # APIキー作成
+    print("--- APIキー作成テスト ---")
+    payload = {"user_id": "test_user", "plan": "free"}
+    response = requests.post(f"{BASE_URL}/admin/api-keys", json=payload)
+    print(f"Status: {response.status_code}")
+    if response.status_code == 200:
+        data = response.json()
+        print(f"Created API Key: {data['api_key'][:20]}...")
+        api_key = data['api_key']
+
+        # 作成したAPIキーでテスト
+        print("\n--- 作成したAPIキーで認証テスト ---")
+        headers = {"X-API-Key": api_key}
+        payload = {
+            "user_message": "こんにちは",
+            "conversation_history": []
+        }
+        response = requests.post(
+            f"{BASE_URL}/v1/spark/conversation",
+            json=payload,
+            headers=headers
+        )
+        print(f"Status: {response.status_code}")
+        if response.status_code == 200:
+            print("認証成功!\n")
+    else:
+        print(f"Error: {response.text}\n")
+
+    # 統計情報
+    print("--- 統計情報取得 ---")
+    response = requests.get(f"{BASE_URL}/admin/stats")
+    print(f"Status: {response.status_code}")
+    print(f"Response: {json.dumps(response.json(), indent=2, ensure_ascii=False)}\n")
 
 def test_rate_limit():
     """レート制限のテスト"""
@@ -99,17 +157,18 @@ def test_rate_limit():
 if __name__ == "__main__":
     print("AIseed API テスト開始\n")
     print("注意: サーバーが起動している必要があります")
-    print("起動コマンド: uvicorn main:app --reload\n")
-    
+    print("起動コマンド: DEV_MODE=true uvicorn main:app --reload\n")
+
     try:
         test_root()
+        test_health_and_admin()
         test_public_api()
         test_authenticated_api()
         test_rate_limit()
-        
+
         print("=== テスト完了 ===")
     except requests.exceptions.ConnectionError:
         print("エラー: サーバーに接続できません")
-        print("サーバーを起動してください: uvicorn main:app --reload")
+        print("サーバーを起動してください: DEV_MODE=true uvicorn main:app --reload")
     except Exception as e:
         print(f"エラー: {e}")
