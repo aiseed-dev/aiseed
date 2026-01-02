@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../config/api_config.dart';
+import '../../services/session_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 
@@ -246,16 +247,23 @@ class _CreateChatScreenState extends State<CreateChatScreen> {
         )
         .toList();
 
+    final sessionId = await SessionService.getSessionId();
+
     final response = await http
         .post(
           Uri.parse(ApiConfig.createConversation),
-          headers: {'Content-Type': 'application/json'},
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Session-ID': sessionId,
+          },
           body: jsonEncode({
             'user_message': userMessage,
             'conversation_history': history,
           }),
         )
         .timeout(const Duration(seconds: 60));
+
+    await SessionService.updateFromResponse(response);
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);

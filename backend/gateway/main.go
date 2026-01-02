@@ -49,7 +49,101 @@ func getEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
-// ==================== レート制限 ====================
+// ==================== セッション管理 ====================
+
+type Session struct {
+	ID           string
+	CreatedAt    time.Time
+	LastSeenAt   time.Time
+	RequestCount int
+	MessageCount int
+}
+
+type SessionManager struct {
+	sessions map[string]*Session
+	mu       sync.RWMutex
+	maxAge   time.Duration
+}
+
+func NewSessionManager(maxAge time.Duration) *SessionManager {
+	sm := &SessionManager{
+		sessions: make(map[string]*Session),
+		maxAge:   maxAge,
+	}
+	go sm.cleanup()
+	return sm
+}
+
+func (sm *SessionManager) CreateSession() *Session {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	bytes := make([]byte, 16)
+	rand.Read(bytes)
+	sessionID := "sess_" + hex.EncodeToString(bytes)
+
+	session := &Session{
+		ID:           sessionID,
+		CreatedAt:    time.Now(),
+		LastSeenAt:   time.Now(),
+		RequestCount: 0,
+		MessageCount: 0,
+	}
+	sm.sessions[sessionID] = session
+	return session
+}
+
+func (sm *SessionManager) GetSession(sessionID string) *Session {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+
+	session, exists := sm.sessions[sessionID]
+	if !exists {
+		return nil
+	}
+
+	// 期限切れチェック
+	if time.Since(session.LastSeenAt) > sm.maxAge {
+		return nil
+	}
+
+	return session
+}
+
+func (sm *SessionManager) UpdateSession(sessionID string) {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	if session, exists := sm.sessions[sessionID]; exists {
+		session.LastSeenAt = time.Now()
+		session.RequestCount++
+	}
+}
+
+func (sm *SessionManager) IncrementMessageCount(sessionID string) {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	if session, exists := sm.sessions[sessionID]; exists {
+		session.MessageCount++
+	}
+}
+
+func (sm *SessionManager) cleanup() {
+	ticker := time.NewTicker(10 * time.Minute)
+	for range ticker.C {
+		sm.mu.Lock()
+		now := time.Now()
+		for id, session := range sm.sessions {
+			if now.Sub(session.LastSeenAt) > sm.maxAge {
+				delete(sm.sessions, id)
+			}
+		}
+		sm.mu.Unlock()
+	}
+}
+
+// ==================== レート制限（セッション単位） ====================
 
 type RateLimiter struct {
 	requests map[string][]time.Time
@@ -64,12 +158,11 @@ func NewRateLimiter(limit int, window time.Duration) *RateLimiter {
 		limit:    limit,
 		window:   window,
 	}
-	// 古いエントリを定期的にクリーンアップ
 	go rl.cleanup()
 	return rl
 }
 
-func (rl *RateLimiter) Allow(key string) bool {
+func (rl *RateLimiter) Allow(sessionID string) bool {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 
@@ -78,20 +171,20 @@ func (rl *RateLimiter) Allow(key string) bool {
 
 	// 古いリクエストを削除
 	var valid []time.Time
-	for _, t := range rl.requests[key] {
+	for _, t := range rl.requests[sessionID] {
 		if t.After(cutoff) {
 			valid = append(valid, t)
 		}
 	}
-	rl.requests[key] = valid
+	rl.requests[sessionID] = valid
 
 	// 制限チェック
-	if len(rl.requests[key]) >= rl.limit {
+	if len(rl.requests[sessionID]) >= rl.limit {
 		return false
 	}
 
 	// 新しいリクエストを記録
-	rl.requests[key] = append(rl.requests[key], now)
+	rl.requests[sessionID] = append(rl.requests[sessionID], now)
 	return true
 }
 
@@ -267,15 +360,17 @@ func logRequest(clientIP, userID, endpoint, service string, statusCode, response
 // ==================== ハンドラー ====================
 
 type Gateway struct {
-	config      *Config
-	rateLimiter *RateLimiter
-	apiClient   *http.Client
+	config         *Config
+	rateLimiter    *RateLimiter
+	sessionManager *SessionManager
+	apiClient      *http.Client
 }
 
 func NewGateway(config *Config) *Gateway {
 	return &Gateway{
-		config:      config,
-		rateLimiter: NewRateLimiter(100, time.Minute), // デフォルト: 100リクエスト/分
+		config:         config,
+		rateLimiter:    NewRateLimiter(100, time.Minute), // デフォルト: 100リクエスト/分
+		sessionManager: NewSessionManager(24 * time.Hour), // セッション有効期限: 24時間
 		apiClient: &http.Client{
 			Timeout: 120 * time.Second, // AI処理は時間がかかる
 		},
@@ -309,17 +404,53 @@ func (g *Gateway) handleHealth(c echo.Context) error {
 	})
 }
 
-// Public API - 会話（認証なし、厳しいレート制限）
+// Public API - セッション作成
+func (g *Gateway) handlePublicSession(c echo.Context) error {
+	session := g.sessionManager.CreateSession()
+
+	log.Printf("新規セッション作成: %s", session.ID)
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"session_id": session.ID,
+		"expires_in": 86400, // 24時間（秒）
+		"message":    "セッションを作成しました",
+	})
+}
+
+// Public API - 会話（認証なし、セッション単位でレート制限）
 func (g *Gateway) handlePublicConversation(c echo.Context) error {
 	start := time.Now()
 	clientIP := c.RealIP()
 
-	// レート制限チェック (5リクエスト/分)
-	if !g.rateLimiter.Allow("public:" + clientIP) {
-		return c.JSON(http.StatusTooManyRequests, map[string]string{
-			"detail": "レート制限を超過しました。1分後に再試行してください。",
+	// セッションIDを取得（ヘッダーまたはボディから）
+	sessionID := c.Request().Header.Get("X-Session-ID")
+
+	// セッションがない場合は新規作成
+	var session *Session
+	if sessionID == "" {
+		session = g.sessionManager.CreateSession()
+		sessionID = session.ID
+		log.Printf("自動セッション作成: %s (IP: %s)", sessionID, clientIP)
+	} else {
+		session = g.sessionManager.GetSession(sessionID)
+		if session == nil {
+			// 無効なセッションID → 新規作成
+			session = g.sessionManager.CreateSession()
+			sessionID = session.ID
+			log.Printf("セッション再作成: %s (IP: %s)", sessionID, clientIP)
+		}
+	}
+
+	// セッション単位でレート制限チェック (10リクエスト/分)
+	if !g.rateLimiter.Allow(sessionID) {
+		return c.JSON(http.StatusTooManyRequests, map[string]interface{}{
+			"detail":     "レート制限を超過しました。1分後に再試行してください。",
+			"session_id": sessionID,
 		})
 	}
+
+	// セッション更新
+	g.sessionManager.UpdateSession(sessionID)
 
 	// リクエストボディを読み取り
 	body, err := io.ReadAll(c.Request().Body)
@@ -332,11 +463,14 @@ func (g *Gateway) handlePublicConversation(c echo.Context) error {
 	bodyStr := strings.ToLower(string(body))
 	if strings.Contains(bodyStr, "野菜") || strings.Contains(bodyStr, "栽培") || strings.Contains(bodyStr, "料理") {
 		service = "grow"
-	} else if strings.Contains(bodyStr, "プログラミング") || strings.Contains(bodyStr, "コード") || strings.Contains(bodyStr, "python") {
+	} else if strings.Contains(bodyStr, "ai") || strings.Contains(bodyStr, "人工知能") || strings.Contains(bodyStr, "機械学習") {
 		service = "learn"
 	} else if strings.Contains(bodyStr, "web") || strings.Contains(bodyStr, "サイト") || strings.Contains(bodyStr, "ホームページ") {
 		service = "create"
 	}
+
+	// メッセージカウント増加
+	g.sessionManager.IncrementMessageCount(sessionID)
 
 	// Python APIに転送
 	resp, err := g.proxyToAPI(c, "/internal/"+service+"/conversation", body)
@@ -345,10 +479,11 @@ func (g *Gateway) handlePublicConversation(c echo.Context) error {
 		return c.JSON(http.StatusBadGateway, map[string]string{"detail": "APIサーバーに接続できません"})
 	}
 
-	// ログ記録
-	logRequest(clientIP, "", "/public/conversation", service, resp.StatusCode, int(time.Since(start).Milliseconds()))
+	// ログ記録（セッションIDも記録）
+	logRequest(clientIP, sessionID, "/public/conversation", service, resp.StatusCode, int(time.Since(start).Milliseconds()))
 
-	return g.sendProxyResponse(c, resp)
+	// レスポンスにセッションIDを含める
+	return g.sendProxyResponseWithSession(c, resp, sessionID)
 }
 
 // v1 API ミドルウェア（認証）
@@ -529,6 +664,20 @@ func (g *Gateway) sendProxyResponse(c echo.Context, resp *http.Response) error {
 	return c.JSONBlob(resp.StatusCode, body)
 }
 
+func (g *Gateway) sendProxyResponseWithSession(c echo.Context, resp *http.Response, sessionID string) error {
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"detail": "レスポンスの読み取りに失敗しました"})
+	}
+
+	// セッションIDをレスポンスヘッダーに追加
+	c.Response().Header().Set("X-Session-ID", sessionID)
+
+	return c.JSONBlob(resp.StatusCode, body)
+}
+
 // ==================== メイン ====================
 
 func main() {
@@ -567,10 +716,16 @@ func main() {
 		return c.JSON(http.StatusOK, map[string]interface{}{
 			"message":  "AIseed Public API",
 			"status":   "running",
-			"services": []string{"spark", "grow", "learn", "create"},
-			"note":     "Web用の制限付きAPI",
+			"services": map[string]string{
+				"spark":  "対話から能力と「らしさ」を発見",
+				"grow":   "伝統野菜の栽培・料理アドバイス",
+				"learn":  "AIと一緒にAIの使い方を学ぶ",
+				"create": "会話だけでWebサイト等を作成",
+			},
+			"note": "Web用の制限付きAPI（セッション単位で管理）",
 		})
 	})
+	public.POST("/session", gw.handlePublicSession)
 	public.POST("/conversation", gw.handlePublicConversation)
 
 	// v1 API（認証必須）
@@ -580,8 +735,13 @@ func main() {
 		return c.JSON(http.StatusOK, map[string]interface{}{
 			"message":  "AIseed Authenticated API v1",
 			"status":   "running",
-			"services": []string{"spark", "grow", "learn", "create"},
-			"note":     "認証が必要なAPI",
+			"services": map[string]string{
+				"spark":  "対話から能力と「らしさ」を発見",
+				"grow":   "伝統野菜の栽培・料理アドバイス",
+				"learn":  "AIと一緒にAIの使い方を学ぶ",
+				"create": "会話だけでWebサイト等を作成",
+			},
+			"note": "認証が必要なAPI（個人データ保存）",
 		})
 	})
 	v1.POST("/spark/conversation", gw.handleV1Conversation("spark"))
