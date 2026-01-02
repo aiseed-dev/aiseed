@@ -1,39 +1,100 @@
 """
-AIseed Server
+AIseed API Server
 AIと人が共に成長するプラットフォームのAPIサーバー
 
 Copyright (c) 2026 AIseed.dev
 Licensed under the GNU Affero General Public License v3.0 (AGPL-3.0)
 Dual-licensed with a Commercial License. See LICENSE for details.
 """
-import asyncio
 import os
+import logging
+import asyncpg
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Header, Request
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from pydantic_settings import BaseSettings
 from typing import Optional
 from claude_agent_sdk import query, ClaudeAgentOptions
-from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime
 
+# ==================== 設定 ====================
+class Settings(BaseSettings):
+    # Database
+    database_url: str = "postgresql://aiseed:aiseed@localhost:5432/aiseed"
+
+    # Server
+    host: str = "0.0.0.0"
+    port: int = 8001  # Goのgatewayが8000を使用
+
+    # Logging
+    log_level: str = "INFO"
+
+    # Development
+    dev_mode: bool = False
+
+    class Config:
+        env_file = ".env"
+        extra = "ignore"
+
+settings = Settings()
+
+# ==================== ログ設定 ====================
+LOG_FORMAT = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+logging.basicConfig(
+    level=getattr(logging, settings.log_level.upper(), logging.INFO),
+    format=LOG_FORMAT,
+)
+logger = logging.getLogger("aiseed.api")
+
+# ==================== データベース ====================
+db_pool: Optional[asyncpg.Pool] = None
+
+async def init_db():
+    """PostgreSQL接続プール初期化"""
+    global db_pool
+    logger.info(f"PostgreSQL接続: {settings.database_url.split('@')[1] if '@' in settings.database_url else settings.database_url}")
+
+    try:
+        db_pool = await asyncpg.create_pool(
+            settings.database_url,
+            min_size=2,
+            max_size=10,
+            command_timeout=60
+        )
+        logger.info("PostgreSQL接続プール作成完了")
+    except Exception as e:
+        logger.error(f"PostgreSQL接続エラー: {e}")
+        raise
+
+async def close_db():
+    """データベース接続クローズ"""
+    global db_pool
+    if db_pool:
+        await db_pool.close()
+        logger.info("PostgreSQL接続クローズ")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """アプリケーションライフサイクル管理"""
+    await init_db()
+    logger.info("AIseed API Server 起動")
+    yield
+    await close_db()
+    logger.info("AIseed API Server 停止")
+
+# ==================== FastAPI ====================
 app = FastAPI(
     title="AIseed API",
-    description="AIと人が共に成長するプラットフォーム",
-    version="1.0.0"
+    description="AIと人が共に成長するプラットフォーム - AI処理API",
+    version="1.0.0",
+    lifespan=lifespan
 )
 
-# 同一オリジンでのデプロイを想定（CORS不要）
-# 開発: localhost:8000 (API) + localhost:XXXX (Flutter)
-# 本番: yourdomain.com/api/ + yourdomain.com/app/
-
-# 簡易的なレート制限（メモリベース）
-# 本番環境ではRedisやデータベースを使用することを推奨
-rate_limit_storage = defaultdict(list)
-
-# リクエスト/レスポンスモデル
+# ==================== モデル ====================
 class ConversationRequest(BaseModel):
     user_message: str
     conversation_history: list[dict] = []
+    session_id: Optional[str] = None
     user_context: Optional[dict] = None
 
 class ConversationResponse(BaseModel):
@@ -45,7 +106,7 @@ class StrengthAnalysis(BaseModel):
     abilities: list[dict]
     personality: list[dict]
 
-# システムプロンプト
+# ==================== システムプロンプト ====================
 PROMPTS = {
     "spark": """
 あなたは「強み発見アシスタント」です。
@@ -91,47 +152,58 @@ PROMPTS = {
 - 技術知識がなくても大丈夫
 - ユーザーの希望を引き出す
 - シンプルで美しいデザイン
+""",
+    "learn": """
+あなたは「プログラミング学習パートナー」です。
+ユーザーと一緒にプログラミングを学んでいくサポートをしてください。
+
+【できること】
+- プログラミングの基礎概念の説明
+- コードの書き方・読み方のガイド
+- エラーの解決サポート
+- 実践的なプロジェクト提案
+- 学習ロードマップの作成
+
+【スタンス】
+- 教えるのではなく一緒に考える
+- 失敗を恐れない雰囲気作り
+- 小さな成功体験を大切に
+- ユーザーのペースに合わせる
+- 「なぜ」を大切にする
 """
 }
 
-# レート制限チェック（簡易版）
-def check_rate_limit(client_ip: str, limit: int = 5, window_minutes: int = 1) -> bool:
-    """
-    IPアドレスベースの簡易レート制限
-    
-    Args:
-        client_ip: クライアントのIPアドレス
-        limit: 制限回数
-        window_minutes: 時間窓（分）
-    
-    Returns:
-        True: 制限内, False: 制限超過
-    """
-    now = datetime.now()
-    cutoff = now - timedelta(minutes=window_minutes)
-    
-    # 古いエントリを削除
-    rate_limit_storage[client_ip] = [
-        timestamp for timestamp in rate_limit_storage[client_ip]
-        if timestamp > cutoff
-    ]
-    
-    # 制限チェック
-    if len(rate_limit_storage[client_ip]) >= limit:
-        return False
-    
-    # 新しいリクエストを記録
-    rate_limit_storage[client_ip].append(now)
-    return True
+# ==================== DBヘルパー ====================
+async def save_conversation(
+    session_id: str,
+    service: str,
+    role: str,
+    content: str,
+    user_id: Optional[str] = None
+):
+    """会話履歴をDBに保存"""
+    if not db_pool:
+        return
 
+    try:
+        async with db_pool.acquire() as conn:
+            await conn.execute(
+                """INSERT INTO conversations (session_id, user_id, service, role, content)
+                   VALUES ($1, $2, $3, $4, $5)""",
+                session_id, user_id, service, role, content
+            )
+    except Exception as e:
+        logger.error(f"会話履歴保存エラー: {e}")
+
+# ==================== 会話処理 ====================
 async def handle_conversation(service: str, request: ConversationRequest) -> ConversationResponse:
-    """共通の会話処理"""
-    
+    """会話処理"""
+
     history = ""
     for msg in request.conversation_history:
         role = "ユーザー" if msg.get("role") == "user" else "AI"
         history += f"{role}: {msg.get('content', '')}\n"
-    
+
     prompt = f"""
 {PROMPTS.get(service, PROMPTS["spark"])}
 
@@ -143,135 +215,90 @@ async def handle_conversation(service: str, request: ConversationRequest) -> Con
 
 自然に会話を続けてください。返答のみを出力してください。
 """
-    
+
     try:
         options = ClaudeAgentOptions(
             system_prompt="あなたは親しみやすい対話パートナーです。"
         )
-        
+
         response_text = ""
         async for message in query(prompt=prompt, options=options):
             if hasattr(message, 'content'):
                 for block in message.content:
                     if hasattr(block, 'text'):
                         response_text += block.text
-        
+
+        # 会話履歴を保存
+        if request.session_id:
+            await save_conversation(request.session_id, service, "user", request.user_message)
+            await save_conversation(request.session_id, service, "assistant", response_text.strip())
+
         return ConversationResponse(
             ai_message=response_text.strip(),
             service=service,
             timestamp=datetime.now().isoformat()
         )
     except Exception as e:
+        logger.error(f"AI処理エラー: {e}")
         raise HTTPException(status_code=500, detail=f"AI処理エラー: {str(e)}")
 
-# ==================== Public API (Web用、認証なし) ====================
+# ==================== エンドポイント ====================
+# 注意: 認証・レート制限はGoのgatewayで処理
+# このAPIはgateway経由でのみアクセスされる想定
 
-@app.get("/public/")
-async def public_root():
-    """Public API ステータス"""
+@app.get("/")
+async def root():
+    """ルートエンドポイント"""
     return {
-        "message": "AIseed Public API",
-        "status": "running",
-        "services": ["spark", "grow", "create"],
-        "note": "Web用の制限付きAPI"
+        "message": "AIseed API Server",
+        "version": "1.0.0",
+        "note": "このAPIはgateway経由でアクセスしてください"
     }
 
-@app.post("/public/conversation", response_model=ConversationResponse)
-async def public_conversation(request: ConversationRequest, req: Request):
-    """
-    Public API - 会話エンドポイント（認証なし、厳しいレート制限）
-    Spark, Grow, Create のいずれかを自動判定
-    """
-    client_ip = req.client.host
-    
-    # レート制限チェック（5リクエスト/分）
-    if not check_rate_limit(client_ip, limit=5, window_minutes=1):
-        raise HTTPException(
-            status_code=429,
-            detail="レート制限を超過しました。1分後に再試行してください。"
-        )
-    
-    # デフォルトは Spark サービス
-    service = "spark"
-    
-    # メッセージ内容から簡易的にサービスを判定
-    message_lower = request.user_message.lower()
-    if any(word in message_lower for word in ["野菜", "栽培", "料理", "レシピ", "育て"]):
-        service = "grow"
-    elif any(word in message_lower for word in ["web", "サイト", "ホームページ", "デザイン"]):
-        service = "create"
-    
-    return await handle_conversation(service, request)
-
-# ==================== Authenticated API (アプリ用、認証必須) ====================
-
-async def verify_api_key(x_api_key: str = Header(..., alias="X-API-Key")):
-    """
-    API キー認証（簡易版）
-    本番環境ではデータベースで管理することを推奨
-    """
-    # 環境変数から有効なAPIキーを取得
-    valid_keys = os.getenv("API_KEYS", "").split(",")
-    valid_keys = [key.strip() for key in valid_keys if key.strip()]
-    
-    if not valid_keys:
-        # APIキーが設定されていない場合は開発モード
-        return {"user_id": "dev", "plan": "dev"}
-    
-    if x_api_key not in valid_keys:
-        raise HTTPException(status_code=403, detail="無効なAPIキーです")
-    
-    # 簡易的なユーザー情報を返す
-    return {"user_id": x_api_key[:8], "plan": "free"}
-
-@app.get("/v1/")
-async def v1_root():
-    """Authenticated API ステータス"""
+@app.get("/health")
+async def health_check():
+    """ヘルスチェック"""
+    db_status = "connected" if db_pool else "disconnected"
     return {
-        "message": "AIseed Authenticated API v1",
-        "status": "running",
-        "services": ["spark", "grow", "create"],
-        "note": "認証が必要なAPI"
+        "status": "healthy",
+        "database": db_status,
+        "timestamp": datetime.now().isoformat()
     }
 
-@app.post("/v1/spark/conversation", response_model=ConversationResponse)
-async def v1_spark_conversation(
-    request: ConversationRequest,
-    user_info: dict = Header(default=None, alias="X-API-Key")
-):
-    """Authenticated API - Spark（強み発見）"""
-    # 本番環境では verify_api_key を使用
-    # user_info = await verify_api_key(user_info)
+@app.post("/internal/spark/conversation", response_model=ConversationResponse)
+async def spark_conversation(request: ConversationRequest):
+    """Spark - 強み発見"""
+    logger.info(f"[Spark] message={request.user_message[:50]}...")
     return await handle_conversation("spark", request)
 
-@app.post("/v1/grow/conversation", response_model=ConversationResponse)
-async def v1_grow_conversation(
-    request: ConversationRequest,
-    user_info: dict = Header(default=None, alias="X-API-Key")
-):
-    """Authenticated API - Grow（栽培・料理）"""
+@app.post("/internal/grow/conversation", response_model=ConversationResponse)
+async def grow_conversation(request: ConversationRequest):
+    """Grow - 栽培・料理"""
+    logger.info(f"[Grow] message={request.user_message[:50]}...")
     return await handle_conversation("grow", request)
 
-@app.post("/v1/create/conversation", response_model=ConversationResponse)
-async def v1_create_conversation(
-    request: ConversationRequest,
-    user_info: dict = Header(default=None, alias="X-API-Key")
-):
-    """Authenticated API - Create（Web制作）"""
+@app.post("/internal/create/conversation", response_model=ConversationResponse)
+async def create_conversation(request: ConversationRequest):
+    """Create - Web制作"""
+    logger.info(f"[Create] message={request.user_message[:50]}...")
     return await handle_conversation("create", request)
 
-@app.post("/v1/analyze", response_model=StrengthAnalysis)
-async def v1_analyze_strengths(
-    conversation_history: list[dict],
-    user_info: dict = Header(default=None, alias="X-API-Key")
-):
-    """Authenticated API - 強み分析"""
-    
+@app.post("/internal/learn/conversation", response_model=ConversationResponse)
+async def learn_conversation(request: ConversationRequest):
+    """Learn - プログラミング学習"""
+    logger.info(f"[Learn] message={request.user_message[:50]}...")
+    return await handle_conversation("learn", request)
+
+@app.post("/internal/analyze", response_model=StrengthAnalysis)
+async def analyze_strengths(conversation_history: list[dict]):
+    """強み分析"""
+    logger.info(f"[Analyze] history_len={len(conversation_history)}")
+
     history = "\n".join([
         f"{'ユーザー' if msg.get('role') == 'user' else 'AI'}: {msg.get('content', '')}"
         for msg in conversation_history
     ])
-    
+
     prompt = f"""
 以下の会話から、ユーザーの強みを分析してください。
 
@@ -284,43 +311,30 @@ JSON形式で出力:
   "personality": [{{"name": "特徴", "evidence": "根拠"}}]
 }}
 """
-    
+
     try:
         options = ClaudeAgentOptions()
-        
+
         response_text = ""
         async for message in query(prompt=prompt, options=options):
             if hasattr(message, 'content'):
                 for block in message.content:
                     if hasattr(block, 'text'):
                         response_text += block.text
-        
+
         import json
         import re
-        
+
         json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
         if json_match:
             result = json.loads(json_match.group())
             return StrengthAnalysis(**result)
-        
+
         return StrengthAnalysis(abilities=[], personality=[])
     except Exception as e:
+        logger.error(f"分析エラー: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-# ==================== 管理用エンドポイント ====================
-
-@app.get("/")
-async def root():
-    """ルートエンドポイント"""
-    return {
-        "message": "AIseed API",
-        "version": "1.0.0",
-        "endpoints": {
-            "public": "/public/",
-            "authenticated": "/v1/"
-        }
-    }
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=settings.host, port=settings.port)
