@@ -1,0 +1,116 @@
+## 【２】JSONスキーマ (初版)
+
+```json
+{
+  "name_jp": "標準和名",
+  "name_kana": "ヨミガナ",
+  "scientific_name": "学名",
+  "family_jp": "科名",
+  "common_names": {
+    "en": ["英語名"],
+    "jp": ["地方名", "別名"]
+  },
+  "summary": {
+    "one_line_description": "この植物を一行で表すキャッチコピー（例：春を告げる小さな地面の絨毯）",
+    "overall_description": "植物の一生を通した全体的な特徴と、畑での役割についての要約（150-250文字）"
+  },
+  
+  "history_and_origin": {
+    "place_of_origin": "原産地",
+    "classification": "分類（在来種, 史前帰化植物, 帰化植物, etc.）", // ★雑草・野草ならではの分類
+    "background": "この植物が持つ歴史的背景の要約（例：元々は薬草として栽培されていた、など）",
+    "spread_and_adaptation_history": [
+      {
+        "region": "東アジア（日本、中国、朝鮮半島など）",
+        "period": "侵入・伝来したおおよその時期",
+        "route_and_process": "どのように広がり、現在の生態的地位を築いたかの経緯（例：牧草に混入、土木工事に伴い拡散など）"
+      }
+    ]
+  },
+
+  "life_cycle_stages": [
+    {
+      "stage_name": "発芽・双葉",
+      "months": [3, 4, 9],
+      "description": "このステージでの姿、形、特徴。",
+      "image_urls": ["URL of a photo of this stage"],
+      "identification_points": "このステージでの見分け方のポイント、類似種との違い。",
+      "ecological_role": "このステージでの生態系での役割（例：他の植物の発芽を抑制する）"
+    },
+    {
+      "stage_name": "ロゼット期・本葉の展開",
+      "months": [4, 5, 10, 11, 12, 1, 2],
+      "description": "地面に張り付くように葉を広げる。越冬時の姿。",
+      "image_urls": ["URL of a photo of this stage"],
+      "identification_points": "葉の形や切れ込みが同定の鍵。",
+      "ecological_role": "地面を覆い、土壌の乾燥や侵食を防ぐ。"
+    },
+    {
+      "stage_name": "茎の伸長・成長期",
+      "months": [], "description": "", "image_urls": [], "identification_points": "", "ecological_role": ""
+    },
+    {
+      "stage_name": "開花期",
+      "months": [], "description": "", "image_urls": [], "identification_points": "", "ecological_role": ""
+    },
+    {
+      "stage_name": "結実・種子形成期",
+      "months": [], "description": "", "image_urls": [], "identification_points": "", "ecological_role": ""
+    },
+    {
+      "stage_name": "枯死・分解期",
+      "months": [11, 12, 1],
+      "description": "地上部は枯れるが、立ったままの枯れ姿が生き物の隠れ家になる。",
+      "image_urls": ["URL of a photo of this stage"],
+      "identification_points": "枯れた後の姿も同定の手がかりになることがある。",
+      "ecological_role": "枯れた根が土に残り、土壌の物理性を改善する。"
+    }
+  ],
+
+  "overall_properties": {
+    "indicator_summary": "この植物の存在が、一生を通じて土壌や環境について何を教えてくれるかの要約。",
+    "soil_preference": {
+      "ph": "好むpH（弱酸性, 中性, etc.）",
+      "nutrient_level": "好む栄養レベル（富栄養, 貧栄養, etc.）",
+      "physical_condition": "好む土壌の物理性（硬い土, 柔らかい土, etc.）"
+    },
+    "coexistence_strategy": {
+      "summary": "この植物と畑で共存していくための全体的な考え方。",
+      "benefits": ["益虫を呼ぶ", "コンパニオンプランツとなる"],
+      "management_tips": "関わる（刈るなど）のに最適なタイミングは、〇〇期。目的は△△。"
+    },
+    "utilization": {
+      "edible_info": "食用としての利用法と注意点。",
+      "medicinal_info": "薬用としての利用法と注意点。",
+      "other_uses": "緑肥、マルチ材としての利用法。"
+    }
+  },
+
+  "references": ["参考にした情報源のURLや書籍名"]
+}
+```
+
+---
+---
+
+## 【３】Geminiへのプロンプト (初版)
+
+```
+# 指示
+
+あなたは、植物の「一生（ライフサイクル）」を観察することの重要性を理解している、経験豊かなリジェネラティブ農業の実践家であり、生態学者です。
+
+これから、植物を「分類」するためではなく、**「種子から枯れるまでの一生」をストーリーとして追体験できる**、新しい形のデジタル図鑑を作成します。細部の正確な同定よりも、成長過程全体の観察を重視します。
+
+以下のJSONスキーマの構造に従って、雑草「〇〇（ここに植物名を入れる）」に関するデータを生成してください。
+
+# 特に重視する点
+- `life_cycle_stages`セクションを最も重要視し、各成長段階ごとの**写真で見るような具体的な姿**、見分け方、役割を丁寧に記述してください。
+- 各ステージの`description`や`identification_points`は、まるで畑の隣で語りかけるような、観察を促す言葉で表現してください。
+- 曖昧さや類似種との混同も、観察を深める機会として捉え、「△△と似ているが、成長すると××な違いが出てくる」といった記述を歓迎します。
+
+もし情報が不明な項目があれば、`null`ではなく、空の文字列 `""` または空の配列 `[]` を使用してください。
+
+# JSONスキーマ
+（上記のJSONスキーマをここに貼り付け）
+```

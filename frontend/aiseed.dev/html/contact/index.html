@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-9FLQ963JXM"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+
+        gtag('config', 'G-9FLQ963JXM');
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="自然農法・リジェネラティブ農業に関するお問い合わせ。見学や情報交換のご連絡をお待ちしています。">
+    <title>お問い合わせ | 自然と対話する暮らし</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@400;700&family=Noto+Sans+JP:wght@300;400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .contact-form {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 400;
+            color: var(--earth-dark);
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.05em;
+        }
+
+        .form-label .required {
+            color: var(--leaf-green);
+            margin-left: 0.3rem;
+        }
+
+        .form-input,
+        .form-textarea {
+            width: 100%;
+            padding: 1rem;
+            font-family: var(--font-sans);
+            font-size: 1rem;
+            color: var(--earth-dark);
+            background: var(--cream);
+            border: 1px solid var(--root-tan);
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .form-input:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: var(--moss-green);
+            box-shadow: 0 0 0 3px rgba(122, 154, 109, 0.1);
+        }
+
+        .form-textarea {
+            min-height: 180px;
+            resize: vertical;
+        }
+
+        .form-submit {
+            width: 100%;
+            padding: 1.2rem;
+            font-family: var(--font-serif);
+            font-size: 1rem;
+            letter-spacing: 0.1em;
+            color: var(--cream);
+            background: var(--leaf-green);
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .form-submit:hover {
+            background: var(--leaf-dark);
+        }
+
+        .contact-info {
+            margin-top: 3rem;
+            padding: 2rem;
+            background: var(--sand-light);
+            border-left: 4px solid var(--moss-green);
+        }
+
+        .contact-info h3 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: var(--earth-dark);
+        }
+
+        .contact-info p {
+            font-size: 0.95rem;
+            color: var(--soil-rich);
+            margin-bottom: 0.5rem;
+        }
+
+        .contact-note {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: rgba(122, 154, 109, 0.1);
+            border-radius: 4px;
+            font-size: 0.9rem;
+            color: var(--soil-rich);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-inner">
+            <a href="/" class="logo">
+                自然と対話する暮らし
+                <span>Natural Farming</span>
+            </a>
+            <nav class="nav">
+                <a href="/">ホーム</a>
+                <a href="/about/">自然農法とは</a>
+                <a href="/light-farming/">Light Farming</a>
+                <a href="/gallery/">畑の記録</a>
+                <a href="/contact/" class="active">お問い合わせ</a>
+            </nav>
+            <button class="nav-toggle" aria-label="メニュー">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Page Hero -->
+    <section class="page-hero">
+        <div class="page-hero-content">
+            <p class="hero-label">Contact</p>
+            <h1 class="hero-title">お問い合わせ</h1>
+            <p class="hero-subtitle">
+                ご質問・ご連絡をお待ちしています
+            </p>
+        </div>
+    </section>
+
+    <!-- Contact Form -->
+    <section class="section">
+        <div class="container-narrow">
+            <div class="prose fade-in text-center mb-3">
+                <p>
+                    自然農法やリジェネラティブ農業に興味をお持ちの方、
+                    情報交換をご希望の方は、お気軽にご連絡ください。
+                </p>
+            </div>
+
+            <div class="contact-form fade-in">
+                <form action="#" method="POST">
+                    <div class="form-group">
+                        <label class="form-label" for="name">
+                            お名前 <span class="required">*</span>
+                        </label>
+                        <input type="text" id="name" name="name" class="form-input" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="email">
+                            メールアドレス <span class="required">*</span>
+                        </label>
+                        <input type="email" id="email" name="email" class="form-input" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="subject">
+                            件名
+                        </label>
+                        <input type="text" id="subject" name="subject" class="form-input">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="message">
+                            メッセージ <span class="required">*</span>
+                        </label>
+                        <textarea id="message" name="message" class="form-textarea" required></textarea>
+                    </div>
+
+                    <button type="submit" class="form-submit">送信する</button>
+                </form>
+
+                <div class="contact-note">
+                    <p>
+                        ※ このフォームはデモ用です。実際に機能させるには、
+                        バックエンドの設定やFormspreeなどのサービスとの連携が必要です。
+                    </p>
+                </div>
+            </div>
+
+            <div class="contact-info fade-in">
+                <h3>その他のお問い合わせ方法</h3>
+                <p>
+                    SNSでの情報発信やメールでのお問い合わせも受け付けています。
+                    自然農法に関する情報交換、見学のご希望など、
+                    お気軽にご連絡ください。
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="section section-alt">
+        <div class="container-narrow">
+            <div class="section-header">
+                <p class="section-label">FAQ</p>
+                <h2 class="section-title">よくあるご質問</h2>
+            </div>
+
+            <div class="prose fade-in">
+                <h3>見学はできますか？</h3>
+                <p>
+                    はい、事前にご連絡いただければ見学可能です。
+                    ただし、農作業の都合もありますので、
+                    日程についてはご相談ください。
+                </p>
+
+                <h3>自然農法を始めたいのですが、どこから始めればいいですか？</h3>
+                <p>
+                    まずは小さなスペースから始めることをおすすめします。
+                    プランターでも、庭の一角でも構いません。
+                    福岡正信氏の著書『わら一本の革命』を読むことから
+                    始めるのも良いでしょう。
+                </p>
+
+                <h3>栽培記録アプリはいつ公開されますか？</h3>
+                <p>
+                    現在開発中です。公開時期が決まりましたら、
+                    このサイトでお知らせします。
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="section section-green">
+        <div class="container">
+            <div class="section-header">
+                <p class="section-label">Explore</p>
+                <h2 class="section-title">サイトを探索する</h2>
+            </div>
+            <p class="cta-text">
+                自然農法とリジェネラティブ農業について<br>
+                さらに詳しく知る
+            </p>
+            <div class="text-center">
+                <a href="/about/" class="btn btn-light" style="margin-right: 1rem;">自然農法とは</a>
+                <a href="/light-farming/" class="btn btn-outline">Light Farming</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-about">
+                <h3>自然と対話する暮らし</h3>
+                <p>福岡正信氏の自然農法とリジェネラティブ農業の実践を通じて、土壌の再生と自然との共生を目指しています。</p>
+            </div>
+            <div class="footer-nav">
+                <h4>ページ</h4>
+                <ul>
+                    <li><a href="/">ホーム</a></li>
+                    <li><a href="/about/">自然農法とは</a></li>
+                    <li><a href="/light-farming/">Light Farming</a></li>
+                    <li><a href="/gallery/">畑の記録</a></li>
+                    <li><a href="/contact/">お問い合わせ</a></li>
+                </ul>
+            </div>
+            <div class="footer-contact">
+                <h4>関連リンク</h4>
+                <ul>
+                    <li><a href="https://www.amazingcarbon.com" target="_blank">Amazing Carbon</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p class="footer-copyright">© 2025 自然と対話する暮らし</p>
+        </div>
+    </footer>
+
+    <script src="../js/main.js"></script>
+</body>
+
+</html>

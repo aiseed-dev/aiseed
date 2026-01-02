@@ -1,0 +1,19 @@
+# IDE
+.vscode/
+.idea/
+*.iml
+.DS_Store
+
+# Environment variables
+.env
+.env.local
+*.key
+*.pem
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db

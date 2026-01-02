@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv/
+*.egg-info/
+
+# Generated static files (keep html/ directory tracked)
+# html/ directory contains the actual website
+
+# AI generation artifacts
+.ai_cache/
+generation_logs/
+
+# Environment variables
+.env
+.env.local
+*.key
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+.temp/
