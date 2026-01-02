@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../../config/api_config.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import 'part3_result_screen.dart';
@@ -20,9 +21,6 @@ class _Part3ChatScreenState extends State<Part3ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   final List<_ChatMessage> _messages = [];
   bool _isLoading = false;
-
-  // サーバーURL（開発時はlocalhost）
-  static const String _serverUrl = 'http://localhost:8000';
 
   @override
   void initState() {
@@ -295,20 +293,20 @@ class _Part3ChatScreenState extends State<Part3ChatScreen> {
 
     final response = await http
         .post(
-          Uri.parse('$_serverUrl/conversation'),
+          Uri.parse(ApiConfig.sparkConversation),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'user_message': userMessage,
             'conversation_history': history,
           }),
         )
-        .timeout(const Duration(seconds: 30));
+        .timeout(const Duration(seconds: 60));
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       return data['ai_message'] ?? '続けてお話しください。';
     } else {
-      throw Exception('Server error');
+      throw Exception('Server error: ${response.statusCode}');
     }
   }
 
