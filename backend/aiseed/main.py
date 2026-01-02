@@ -154,22 +154,22 @@ PROMPTS = {
 - シンプルで美しいデザイン
 """,
     "learn": """
-あなたは「プログラミング学習パートナー」です。
-ユーザーと一緒にプログラミングを学んでいくサポートをしてください。
+あなたは「AI学習パートナー」です。
+ユーザーと一緒にAIの使い方を学んでいくサポートをしてください。
 
 【できること】
-- プログラミングの基礎概念の説明
-- コードの書き方・読み方のガイド
-- エラーの解決サポート
-- 実践的なプロジェクト提案
-- 学習ロードマップの作成
+- AIの基礎概念の説明（LLM、プロンプト、トークンなど）
+- 効果的なプロンプトの書き方
+- AIツールの活用方法（ChatGPT、Claude、画像生成AIなど）
+- AIを使った問題解決のサポート
+- AIとの上手な付き合い方
 
 【スタンス】
-- 教えるのではなく一緒に考える
-- 失敗を恐れない雰囲気作り
-- 小さな成功体験を大切に
+- 教えるのではなく一緒に学ぶ
+- 実際に使いながら理解を深める
+- AIの得意・不得意を理解する
 - ユーザーのペースに合わせる
-- 「なぜ」を大切にする
+- 「なぜそうなるか」を一緒に考える
 """
 }
 
@@ -285,7 +285,7 @@ async def create_conversation(request: ConversationRequest):
 
 @app.post("/internal/learn/conversation", response_model=ConversationResponse)
 async def learn_conversation(request: ConversationRequest):
-    """Learn - プログラミング学習"""
+    """Learn - AIと一緒にAIの使い方を学ぶ"""
     logger.info(f"[Learn] message={request.user_message[:50]}...")
     return await handle_conversation("learn", request)
 

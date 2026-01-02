@@ -2,10 +2,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../config/api_config.dart';
+import '../../services/session_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 
-/// Learn チャット画面 - プログラミング学習AI対話
+/// Learn チャット画面 - AIと一緒にAIの使い方を学ぶ
 class LearnChatScreen extends StatefulWidget {
   const LearnChatScreen({super.key});
 
@@ -23,13 +24,13 @@ class _LearnChatScreenState extends State<LearnChatScreen> {
   void initState() {
     super.initState();
     _addAIMessage(
-      'こんにちは！💻\n\n'
-      'プログラミングを一緒に学びましょう。\n\n'
-      'どこから始めますか？\n'
-      '• 完全初心者（プログラミングって何？）\n'
-      '• 基礎から学びたい（Python入門）\n'
-      '• アプリを作りたい（Flutter）\n'
-      '• 自分のAIを作りたい（BYOA開発）',
+      'こんにちは！🤖\n\n'
+      'AIの使い方を一緒に学びましょう。\n\n'
+      '何から始めますか？\n'
+      '• AIって何？（基礎から知りたい）\n'
+      '• プロンプトの書き方を学びたい\n'
+      '• ChatGPTやClaudeの使い分け\n'
+      '• 画像生成AIを使ってみたい',
     );
   }
 
@@ -160,7 +161,7 @@ class _LearnChatScreenState extends State<LearnChatScreen> {
             child: TextField(
               controller: _controller,
               decoration: InputDecoration(
-                hintText: 'プログラミングについて質問...',
+                hintText: 'AIについて質問...',
                 hintStyle: AppTextStyles.bodyMedium.copyWith(
                   color: AppColors.textSecondary,
                 ),
@@ -246,16 +247,23 @@ class _LearnChatScreenState extends State<LearnChatScreen> {
         )
         .toList();
 
+    final sessionId = await SessionService.getSessionId();
+
     final response = await http
         .post(
           Uri.parse(ApiConfig.learnConversation),
-          headers: {'Content-Type': 'application/json'},
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Session-ID': sessionId,
+          },
           body: jsonEncode({
             'user_message': userMessage,
             'conversation_history': history,
           }),
         )
         .timeout(const Duration(seconds: 60));
+
+    await SessionService.updateFromResponse(response);
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
@@ -268,31 +276,33 @@ class _LearnChatScreenState extends State<LearnChatScreen> {
   String _getOfflineResponse(String userMessage) {
     final lowerMsg = userMessage.toLowerCase();
 
-    if (lowerMsg.contains('初心者') || lowerMsg.contains('始め')) {
-      return 'プログラミング初心者ですね！👍\n\n'
-          'まずはPythonから始めましょう。\n'
-          'シンプルで読みやすく、AIにも使われています。\n\n'
-          '最初の一歩：\n'
-          '```python\n'
-          'print("Hello, World!")\n'
-          '```\n\n'
-          'これを実行すると「Hello, World!」と表示されます。\n'
-          '試してみましょう！';
-    } else if (lowerMsg.contains('python')) {
-      return 'Python良い選択です！🐍\n\n'
-          '何を作りたいですか？\n'
-          '• Webアプリ\n'
-          '• データ分析\n'
-          '• AIエージェント';
-    } else if (lowerMsg.contains('flutter') || lowerMsg.contains('アプリ')) {
-      return 'アプリ開発ですね！📱\n\n'
-          'Flutterなら1つのコードでiOSとAndroid両方のアプリが作れます。\n\n'
-          'まずは環境構築から始めましょうか？';
-    } else if (lowerMsg.contains('ai') || lowerMsg.contains('エージェント')) {
-      return 'BYOA開発ですね！🤖\n\n'
-          '自分だけのAIエージェントを作りましょう。\n\n'
-          'Claude SDKを使えば、比較的簡単に作れます。\n'
-          'どんなエージェントを作りたいですか？';
+    if (lowerMsg.contains('初心者') || lowerMsg.contains('始め') || lowerMsg.contains('基礎')) {
+      return 'AI初心者ですね！🤖\n\n'
+          'AIは「人工知能」の略で、人間のように考えたり学んだりするコンピュータプログラムです。\n\n'
+          '最近話題のChatGPTやClaudeは「大規模言語モデル（LLM）」と呼ばれ、'
+          '文章を理解して返答することができます。\n\n'
+          '何か具体的に知りたいことはありますか？';
+    } else if (lowerMsg.contains('プロンプト')) {
+      return 'プロンプトの書き方ですね！✍️\n\n'
+          'プロンプトとは、AIへの指示文のことです。\n\n'
+          'コツは3つ：\n'
+          '1. 具体的に書く\n'
+          '2. 役割を与える（「あなたは〇〇の専門家です」）\n'
+          '3. 出力形式を指定する\n\n'
+          '試しに何か聞いてみますか？';
+    } else if (lowerMsg.contains('chatgpt') || lowerMsg.contains('claude')) {
+      return 'AIツールの使い分けですね！🔧\n\n'
+          '• ChatGPT: 汎用性が高い、プラグイン豊富\n'
+          '• Claude: 長文が得意、日本語も自然\n'
+          '• Gemini: Google連携が便利\n\n'
+          '用途によって使い分けるのがオススメです！';
+    } else if (lowerMsg.contains('画像') || lowerMsg.contains('生成')) {
+      return '画像生成AIですね！🎨\n\n'
+          '代表的なツール：\n'
+          '• DALL-E 3: ChatGPTから使える\n'
+          '• Midjourney: アート向け、高品質\n'
+          '• Stable Diffusion: 無料で使える\n\n'
+          'どんな画像を作りたいですか？';
     } else {
       return '面白いですね！\n\nもう少し詳しく教えてもらえますか？';
     }

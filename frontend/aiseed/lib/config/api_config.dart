@@ -3,6 +3,9 @@ class ApiConfig {
   /// 本番サーバーURL
   static const String baseUrl = 'https://api.aiseed.dev';
 
+  /// セッション作成エンドポイント
+  static String get sessionEndpoint => '$baseUrl/public/session';
+
   /// 各サービスのエンドポイント（Public API）
   static String get sparkConversation => '$baseUrl/public/conversation';
   static String get growConversation => '$baseUrl/public/conversation';
