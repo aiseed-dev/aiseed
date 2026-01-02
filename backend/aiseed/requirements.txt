@@ -2,5 +2,7 @@ claude-agent-sdk
 fastapi
 uvicorn[standard]
 pydantic
+pydantic-settings
 python-dotenv
-aiosqlite
+asyncpg
+httpx
