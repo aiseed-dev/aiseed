@@ -12,6 +12,7 @@ from claude_agent_sdk import query, ClaudeAgentOptions
 from .prompts import get_prompt
 from .tools import InsightTools, SkillTools, HistoryTools
 from memory.store import UserMemory
+from config import get_model, get_model_id
 
 logger = logging.getLogger("aiseed.agent")
 
@@ -60,15 +61,29 @@ class AIseedAgent:
         user_message: str,
         user_id: str,
         session_id: Optional[str] = None,
-        conversation_history: list[dict] = None
+        conversation_history: list[dict] = None,
+        task_name: Optional[str] = None
     ) -> str:
         """
         会話を処理してレスポンスを返す
 
+        Args:
+            service: サービス名（spark, grow, create）
+            user_message: ユーザーのメッセージ
+            user_id: ユーザーID
+            session_id: セッションID
+            conversation_history: 会話履歴
+            task_name: 処理名（モデル選択用、未指定時は{service}_conversation）
+
         注意: Claude Agent SDKの実際のAPIに合わせて調整が必要です。
-        現在の実装は想定に基づいています。
         """
         conversation_history = conversation_history or []
+
+        # 処理名からモデルを決定
+        task_name = task_name or f"{service}_conversation"
+        model = get_model(task_name)
+        model_id = get_model_id(model)
+        logger.info(f"[{task_name}] Using model: {model} ({model_id})")
 
         # 会話履歴を文字列に変換
         history_text = ""
@@ -113,6 +128,7 @@ class AIseedAgent:
             # Claude Agent SDKを使用
             # 注意: 実際のAPIに合わせて調整が必要
             options = ClaudeAgentOptions(
+                model=model_id,  # 設定から取得したモデル
                 system_prompt="あなたはaiseedのAIパートナーです。",
                 # tools=self._get_all_tool_definitions()  # ツール定義（SDK対応時に有効化）
             )
@@ -149,6 +165,11 @@ class AIseedAgent:
 
         会話終了時に呼び出して、発見した特性を記録する
         """
+        # モデルを取得（heavy処理）
+        model = get_model("analyze_conversation")
+        model_id = get_model_id(model)
+        logger.info(f"[analyze_conversation] Using model: {model} ({model_id})")
+
         history_text = "\n".join([
             f"{'ユーザー' if msg.get('role') == 'user' else 'AI'}: {msg.get('content', '')}"
             for msg in conversation_history
@@ -178,7 +199,7 @@ JSON形式で出力してください：
 """
 
         try:
-            options = ClaudeAgentOptions()
+            options = ClaudeAgentOptions(model=model_id)
 
             response_text = ""
             async for message in query(prompt=prompt, options=options):

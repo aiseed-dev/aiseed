@@ -24,6 +24,7 @@ from agent.core import AIseedAgent
 from agent.prompts import get_prompt, PROMPTS, SERVICES, get_service_info
 from agent.tools.experience import SparkExperience, TaskResult, TASKS, TASK_ORDER
 from memory.store import UserMemory
+from config import get_model, get_model_id, get_config
 
 # ==================== 設定 ====================
 class Settings(BaseSettings):
@@ -445,7 +446,12 @@ JSON形式で出力:
 """
 
     try:
-        options = ClaudeAgentOptions()
+        # モデルを取得（heavy処理）
+        model = get_model("analyze_strengths")
+        model_id = get_model_id(model)
+        logger.info(f"[Analyze] Using model: {model} ({model_id})")
+
+        options = ClaudeAgentOptions(model=model_id)
 
         response_text = ""
         async for message in query(prompt=prompt, options=options):
