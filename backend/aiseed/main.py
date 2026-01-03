@@ -24,19 +24,19 @@ from agent.core import AIseedAgent
 from agent.prompts import get_prompt, PROMPTS, SERVICES, get_service_info
 from agent.tools.experience import SparkExperience, TaskResult, TASKS, TASK_ORDER
 from memory.store import UserMemory
-from config import get_model, get_model_id, get_config, setup_logging, get_logger
+from config import get_model_id, get_model_info, setup_logging, get_logger, SERVER, MEMORY
 
 # ==================== 設定 ====================
 class Settings(BaseSettings):
-    # Database
+    # Database（秘匿情報は.envから）
     database_url: str = "postgresql://aiseed:aiseed@localhost:5432/aiseed"
 
-    # Server
-    host: str = "0.0.0.0"
-    port: int = 8001  # Goのgatewayが8000を使用
+    # Server（settings.pyからデフォルト値）
+    host: str = SERVER["host"]
+    port: int = SERVER["port"]
 
-    # Memory
-    memory_base_path: str = "user_memory"
+    # Memory（settings.pyからデフォルト値）
+    memory_base_path: str = MEMORY["base_path"]
 
     class Config:
         env_file = ".env"
@@ -437,9 +437,9 @@ JSON形式で出力:
 
     try:
         # モデルを取得（heavy処理）
-        model = get_model("analyze_strengths")
-        model_id = get_model_id(model)
-        logger.info(f"[Analyze] Using model: {model} ({model_id})")
+        model_info = get_model_info("analyze_strengths")
+        model_id = model_info["model_id"]
+        logger.info(f"[Analyze] Using model: {model_info['model_key']} ({model_id})")
 
         options = ClaudeAgentOptions(model=model_id)
 

@@ -12,7 +12,7 @@ from claude_agent_sdk import query, ClaudeAgentOptions
 from .prompts import get_prompt
 from .tools import InsightTools, SkillTools, HistoryTools
 from memory.store import UserMemory
-from config import get_model, get_model_id
+from config import get_model_id, get_model_info
 
 logger = logging.getLogger("aiseed.agent")
 
@@ -81,9 +81,9 @@ class AIseedAgent:
 
         # 処理名からモデルを決定
         task_name = task_name or f"{service}_conversation"
-        model = get_model(task_name)
-        model_id = get_model_id(model)
-        logger.info(f"[{task_name}] Using model: {model} ({model_id})")
+        model_info = get_model_info(task_name)
+        model_id = model_info["model_id"]
+        logger.info(f"[{task_name}] Using model: {model_info['model_key']} ({model_id})")
 
         # 会話履歴を文字列に変換
         history_text = ""
@@ -166,9 +166,9 @@ class AIseedAgent:
         会話終了時に呼び出して、発見した特性を記録する
         """
         # モデルを取得（heavy処理）
-        model = get_model("analyze_conversation")
-        model_id = get_model_id(model)
-        logger.info(f"[analyze_conversation] Using model: {model} ({model_id})")
+        model_info = get_model_info("analyze_conversation")
+        model_id = model_info["model_id"]
+        logger.info(f"[analyze_conversation] Using model: {model_info['model_key']} ({model_id})")
 
         history_text = "\n".join([
             f"{'ユーザー' if msg.get('role') == 'user' else 'AI'}: {msg.get('content', '')}"
