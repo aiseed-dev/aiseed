@@ -5,9 +5,8 @@
 import 'package:flutter/material.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_text_styles.dart';
-import 'screens/spark/part3_intro_screen.dart';
+import 'screens/spark/spark_mode_screen.dart';
 import 'screens/grow/grow_intro_screen.dart';
-import 'screens/learn/learn_intro_screen.dart';
 import 'screens/create/create_intro_screen.dart';
 
 void main() {
@@ -107,17 +106,17 @@ class HomeScreen extends StatelessWidget {
 
               const SizedBox(height: 40),
 
-              // サービス一覧
+              // サービス一覧 - 3サービス構造
               _buildServiceCard(
                 context,
                 icon: '✨',
                 title: 'Spark',
-                subtitle: '強みを発見',
-                description: '対話から能力と「らしさ」を見つける',
+                subtitle: '自分を知る',
+                description: '対話や体験から強みと「らしさ」を発見',
                 color: AppColors.primary,
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => const Part3IntroScreen(previousScores: {}),
+                    builder: (_) => const SparkModeScreen(),
                   ),
                 ),
               ),
@@ -128,8 +127,8 @@ class HomeScreen extends StatelessWidget {
                 context,
                 icon: '🌱',
                 title: 'Grow',
-                subtitle: '栽培・料理',
-                description: '伝統野菜を育て、料理する',
+                subtitle: '育てる',
+                description: '野菜・子ども・自分を育てる',
                 color: AppColors.naturalistic,
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const GrowIntroScreen()),
@@ -140,24 +139,10 @@ class HomeScreen extends StatelessWidget {
 
               _buildServiceCard(
                 context,
-                icon: '💻',
-                title: 'Learn',
-                subtitle: 'プログラミング',
-                description: 'AIと一緒にコードを学ぶ',
-                color: AppColors.logical,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const LearnIntroScreen()),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              _buildServiceCard(
-                context,
                 icon: '🎨',
                 title: 'Create',
-                subtitle: 'Web制作',
-                description: '会話だけでサイトを作る',
+                subtitle: 'BYOA',
+                description: 'あなたのAIで創る',
                 color: AppColors.spatial,
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const CreateIntroScreen()),

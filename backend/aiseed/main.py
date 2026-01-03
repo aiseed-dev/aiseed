@@ -7,6 +7,7 @@ Licensed under the GNU Affero General Public License v3.0 (AGPL-3.0)
 Dual-licensed with a Commercial License. See LICENSE for details.
 """
 import os
+import sys
 import logging
 import asyncpg
 from contextlib import asynccontextmanager
@@ -14,8 +15,15 @@ from fastapi import FastAPI, HTTPException, Header, Request
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 from typing import Optional
-from claude_agent_sdk import query, ClaudeAgentOptions
 from datetime import datetime
+
+# パスの追加（agent, memoryモジュールのため）
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from agent.core import AIseedAgent
+from agent.prompts import get_prompt, PROMPTS, SERVICES, get_service_info
+from agent.tools.experience import SparkExperience, TaskResult, TASKS, TASK_ORDER
+from memory.store import UserMemory
 
 # ==================== 設定 ====================
 class Settings(BaseSettings):
@@ -32,6 +40,9 @@ class Settings(BaseSettings):
     # Development
     dev_mode: bool = False
 
+    # Memory
+    memory_base_path: str = "user_memory"
+
     class Config:
         env_file = ".env"
         extra = "ignore"
@@ -46,9 +57,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger("aiseed.api")
 
-# ==================== データベース ====================
+# ==================== グローバル ====================
 db_pool: Optional[asyncpg.Pool] = None
+agent: Optional[AIseedAgent] = None
+spark_experience: Optional[SparkExperience] = None
 
+# ==================== データベース ====================
 async def init_db():
     """PostgreSQL接続プール初期化"""
     global db_pool
@@ -76,7 +90,18 @@ async def close_db():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """アプリケーションライフサイクル管理"""
+    global agent, spark_experience
+
     await init_db()
+
+    # エージェントの初期化
+    agent = AIseedAgent(memory_base_path=settings.memory_base_path)
+    logger.info(f"AIseed Agent 初期化完了 (memory: {settings.memory_base_path})")
+
+    # 体験タスクの初期化
+    spark_experience = SparkExperience(memory=agent.memory)
+    logger.info("Spark Experience 初期化完了")
+
     logger.info("AIseed API Server 起動")
     yield
     await close_db()
@@ -86,7 +111,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="AIseed API",
     description="AIと人が共に成長するプラットフォーム - AI処理API",
-    version="1.0.0",
+    version="2.0.0",
     lifespan=lifespan
 )
 
@@ -95,83 +120,37 @@ class ConversationRequest(BaseModel):
     user_message: str
     conversation_history: list[dict] = []
     session_id: Optional[str] = None
+    user_id: Optional[str] = None  # 追加: ユーザーID
     user_context: Optional[dict] = None
 
 class ConversationResponse(BaseModel):
     ai_message: str
     service: str
     timestamp: str
+    user_id: Optional[str] = None
 
 class StrengthAnalysis(BaseModel):
     abilities: list[dict]
     personality: list[dict]
 
-# ==================== システムプロンプト ====================
-PROMPTS = {
-    "spark": """
-あなたは「強み発見アシスタント」です。
-自然な会話を通じて、相手の能力や「らしさ」を発見してください。
+class UserProfileResponse(BaseModel):
+    user_id: str
+    age_group: Optional[str]
+    conversation_count: int
+    abilities: list[dict]
+    personalities: list[dict]
+    interests: list[dict]
+    skills: list[str]
 
-【重要なルール】
-- 「テスト」や「評価」の雰囲気を出さない
-- 友達と話すようなリラックスした雰囲気で
-- 相手の話に興味を持って聞く
+class SkillGenerateRequest(BaseModel):
+    user_id: str
+    skill_type: str  # spark, grow, create, learn
 
-【発見したい能力】
-- 論理的思考、問題解決力、傾聴力、説明力、状況判断力、共感力
-
-【発見したい「らしさ」】
-- 価値観、興味関心、対人スタイル
-""",
-    "grow": """
-あなたは「栽培・料理アドバイザー」です。
-自然栽培、伝統野菜、料理についてアドバイスしてください。
-
-【できること】
-- 季節に合った野菜の提案
-- 栽培方法のアドバイス
-- 伝統野菜の歴史と育て方
-- 収穫した野菜の料理レシピ
-
-【スタンス】
-- 初心者にも分かりやすく
-- 実践的なアドバイス
-- 一緒に学ぶ姿勢
-""",
-    "create": """
-あなたは「Web制作アシスタント」です。
-ユーザーの希望を聞いて、Webサイトを作る手伝いをしてください。
-
-【できること】
-- サイトの構成提案
-- デザインのアドバイス
-- コード生成
-- 公開方法のガイド
-
-【スタンス】
-- 技術知識がなくても大丈夫
-- ユーザーの希望を引き出す
-- シンプルで美しいデザイン
-""",
-    "learn": """
-あなたは「AI学習パートナー」です。
-ユーザーと一緒にAIの使い方を学んでいくサポートをしてください。
-
-【できること】
-- AIの基礎概念の説明（LLM、プロンプト、トークンなど）
-- 効果的なプロンプトの書き方
-- AIツールの活用方法（ChatGPT、Claude、画像生成AIなど）
-- AIを使った問題解決のサポート
-- AIとの上手な付き合い方
-
-【スタンス】
-- 教えるのではなく一緒に学ぶ
-- 実際に使いながら理解を深める
-- AIの得意・不得意を理解する
-- ユーザーのペースに合わせる
-- 「なぜそうなるか」を一緒に考える
-"""
-}
+class SkillResponse(BaseModel):
+    status: str
+    skill_type: str
+    content: Optional[str] = None
+    message: Optional[str] = None
 
 # ==================== DBヘルパー ====================
 async def save_conversation(
@@ -197,46 +176,32 @@ async def save_conversation(
 
 # ==================== 会話処理 ====================
 async def handle_conversation(service: str, request: ConversationRequest) -> ConversationResponse:
-    """会話処理"""
+    """会話処理（エージェントを使用）"""
+    global agent
 
-    history = ""
-    for msg in request.conversation_history:
-        role = "ユーザー" if msg.get("role") == "user" else "AI"
-        history += f"{role}: {msg.get('content', '')}\n"
-
-    prompt = f"""
-{PROMPTS.get(service, PROMPTS["spark"])}
-
-【これまでの会話】
-{history}
-
-【ユーザーの最新メッセージ】
-{request.user_message}
-
-自然に会話を続けてください。返答のみを出力してください。
-"""
+    # ユーザーIDの決定（未指定の場合はセッションIDを使用）
+    user_id = request.user_id or request.session_id or "anonymous"
 
     try:
-        options = ClaudeAgentOptions(
-            system_prompt="あなたは親しみやすい対話パートナーです。"
+        # エージェントで会話を処理
+        response_text = await agent.chat(
+            service=service,
+            user_message=request.user_message,
+            user_id=user_id,
+            session_id=request.session_id,
+            conversation_history=request.conversation_history
         )
 
-        response_text = ""
-        async for message in query(prompt=prompt, options=options):
-            if hasattr(message, 'content'):
-                for block in message.content:
-                    if hasattr(block, 'text'):
-                        response_text += block.text
-
-        # 会話履歴を保存
+        # 会話履歴をDBに保存
         if request.session_id:
-            await save_conversation(request.session_id, service, "user", request.user_message)
-            await save_conversation(request.session_id, service, "assistant", response_text.strip())
+            await save_conversation(request.session_id, service, "user", request.user_message, user_id)
+            await save_conversation(request.session_id, service, "assistant", response_text, user_id)
 
         return ConversationResponse(
-            ai_message=response_text.strip(),
+            ai_message=response_text,
             service=service,
-            timestamp=datetime.now().isoformat()
+            timestamp=datetime.now().isoformat(),
+            user_id=user_id
         )
     except Exception as e:
         logger.error(f"AI処理エラー: {e}")
@@ -251,7 +216,19 @@ async def root():
     """ルートエンドポイント"""
     return {
         "message": "AIseed API Server",
-        "version": "1.0.0",
+        "version": "2.2.0",
+        "philosophy": "AIと人が共に成長する",
+        "services": {
+            "spark": {
+                "description": "✨ 自分を知る",
+                "modes": {
+                    "conversation": "💬 おしゃべりで発見",
+                    "experience": "🎮 体験で発見（NEW）"
+                }
+            },
+            "grow": "🌱 自然と向き合い、育てる - 野菜・子ども・自分を育てる",
+            "create": "🎨 あなたのAIで創る - BYOA（Bring Your Own AI）",
+        },
         "note": "このAPIはgateway経由でアクセスしてください"
     }
 
@@ -259,40 +236,195 @@ async def root():
 async def health_check():
     """ヘルスチェック"""
     db_status = "connected" if db_pool else "disconnected"
+    agent_status = "ready" if agent else "not_initialized"
     return {
         "status": "healthy",
         "database": db_status,
+        "agent": agent_status,
         "timestamp": datetime.now().isoformat()
     }
 
+# ==================== 会話エンドポイント ====================
 @app.post("/internal/spark/conversation", response_model=ConversationResponse)
 async def spark_conversation(request: ConversationRequest):
-    """Spark - 強み発見"""
-    logger.info(f"[Spark] message={request.user_message[:50]}...")
+    """Spark - 強み発見（おしゃべりモード）"""
+    logger.info(f"[Spark/Chat] user={request.user_id or 'anon'} message={request.user_message[:50]}...")
     return await handle_conversation("spark", request)
+
+
+# ==================== Spark体験タスク ====================
+class ExperienceStartRequest(BaseModel):
+    user_id: str
+    session_id: Optional[str] = None
+
+
+class ExperienceResultRequest(BaseModel):
+    task_id: str
+    user_id: str
+    session_id: str
+    tap_position: Optional[dict] = None
+    selected_option: Optional[str] = None
+    other_text: Optional[str] = None
+    arranged_positions: Optional[list] = None
+    tap_sequence: Optional[list] = None
+    selected_color: Optional[str] = None
+    duration_ms: int
+    hesitation_count: int = 0
+
+
+@app.post("/internal/spark/experience/start")
+async def start_spark_experience(request: ExperienceStartRequest):
+    """Spark体験タスクを開始"""
+    global spark_experience
+
+    import uuid
+    session_id = request.session_id or f"exp_{uuid.uuid4().hex[:12]}"
+
+    logger.info(f"[Spark/Experience] START user={request.user_id} session={session_id}")
+
+    result = spark_experience.start_session(
+        user_id=request.user_id,
+        session_id=session_id
+    )
+    return result
+
+
+@app.get("/internal/spark/experience/tasks")
+async def get_experience_tasks():
+    """利用可能なタスク一覧を取得"""
+    return {
+        "tasks": [
+            {
+                "id": task_id,
+                "name": TASKS[task_id]["name"],
+                "type": TASKS[task_id]["type"],
+            }
+            for task_id in TASK_ORDER
+        ],
+        "total": len(TASK_ORDER)
+    }
+
+
+@app.get("/internal/spark/experience/task/{task_id}")
+async def get_experience_task(task_id: str):
+    """特定のタスク情報を取得"""
+    global spark_experience
+    return spark_experience.get_task(task_id)
+
+
+@app.post("/internal/spark/experience/submit")
+async def submit_experience_result(request: ExperienceResultRequest):
+    """タスク結果を送信"""
+    global spark_experience
+
+    logger.info(f"[Spark/Experience] SUBMIT task={request.task_id} user={request.user_id}")
+
+    result = TaskResult(
+        task_id=request.task_id,
+        user_id=request.user_id,
+        session_id=request.session_id,
+        tap_position=request.tap_position,
+        selected_option=request.selected_option,
+        other_text=request.other_text,
+        arranged_positions=request.arranged_positions,
+        tap_sequence=request.tap_sequence,
+        selected_color=request.selected_color,
+        duration_ms=request.duration_ms,
+        hesitation_count=request.hesitation_count,
+    )
+
+    return spark_experience.submit_result(result)
 
 @app.post("/internal/grow/conversation", response_model=ConversationResponse)
 async def grow_conversation(request: ConversationRequest):
-    """Grow - 栽培・料理"""
-    logger.info(f"[Grow] message={request.user_message[:50]}...")
+    """Grow - 自然と向き合い、育てる（野菜・子ども・自分）"""
+    logger.info(f"[Grow] user={request.user_id or 'anon'} message={request.user_message[:50]}...")
     return await handle_conversation("grow", request)
 
 @app.post("/internal/create/conversation", response_model=ConversationResponse)
 async def create_conversation(request: ConversationRequest):
-    """Create - Web制作"""
-    logger.info(f"[Create] message={request.user_message[:50]}...")
+    """Create - BYOA（Bring Your Own AI）で創る"""
+    logger.info(f"[Create] user={request.user_id or 'anon'} message={request.user_message[:50]}...")
     return await handle_conversation("create", request)
 
 @app.post("/internal/learn/conversation", response_model=ConversationResponse)
 async def learn_conversation(request: ConversationRequest):
-    """Learn - AIと一緒にAIの使い方を学ぶ"""
-    logger.info(f"[Learn] message={request.user_message[:50]}...")
-    return await handle_conversation("learn", request)
+    """Learn - Createに統合（後方互換性のため維持）"""
+    logger.info(f"[Learn→Create] user={request.user_id or 'anon'} message={request.user_message[:50]}...")
+    return await handle_conversation("create", request)  # Createにリダイレクト
 
+# ==================== ユーザープロファイル ====================
+@app.get("/internal/user/{user_id}/profile", response_model=UserProfileResponse)
+async def get_user_profile(user_id: str):
+    """ユーザープロファイルを取得"""
+    global agent
+
+    try:
+        summary = agent.memory.get_user_summary(user_id)
+        return UserProfileResponse(
+            user_id=user_id,
+            age_group=summary.get("age_group"),
+            conversation_count=summary.get("conversation_count", 0),
+            abilities=summary.get("abilities", []),
+            personalities=summary.get("personalities", []),
+            interests=summary.get("interests", []),
+            skills=summary.get("skills", [])
+        )
+    except Exception as e:
+        logger.error(f"プロファイル取得エラー: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==================== スキル ====================
+@app.post("/internal/skill/generate", response_model=SkillResponse)
+async def generate_skill(request: SkillGenerateRequest):
+    """スキルファイルを生成"""
+    global agent
+
+    try:
+        result = agent.skill_tools._handle_generate_skill(
+            user_id=request.user_id,
+            skill_type=request.skill_type
+        )
+
+        if result.get("status") == "insufficient_data":
+            return SkillResponse(
+                status="insufficient_data",
+                skill_type=request.skill_type,
+                message=result.get("message")
+            )
+
+        return SkillResponse(
+            status="generated",
+            skill_type=request.skill_type,
+            content=result.get("content")
+        )
+    except Exception as e:
+        logger.error(f"スキル生成エラー: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/internal/skill/{user_id}/{skill_type}")
+async def get_skill(user_id: str, skill_type: str):
+    """スキルファイルを取得"""
+    global agent
+
+    try:
+        result = agent.skill_tools._handle_get_skill(
+            user_id=user_id,
+            skill_type=skill_type
+        )
+        return result
+    except Exception as e:
+        logger.error(f"スキル取得エラー: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==================== 分析 ====================
 @app.post("/internal/analyze", response_model=StrengthAnalysis)
 async def analyze_strengths(conversation_history: list[dict]):
-    """強み分析"""
+    """強み分析（レガシー互換）"""
     logger.info(f"[Analyze] history_len={len(conversation_history)}")
+
+    # レガシー実装を維持（Claude Agent SDK直接使用）
+    from claude_agent_sdk import query, ClaudeAgentOptions
 
     history = "\n".join([
         f"{'ユーザー' if msg.get('role') == 'user' else 'AI'}: {msg.get('content', '')}"
@@ -333,6 +465,28 @@ JSON形式で出力:
         return StrengthAnalysis(abilities=[], personality=[])
     except Exception as e:
         logger.error(f"分析エラー: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/internal/conversation/analyze")
+async def analyze_conversation(
+    user_id: str,
+    session_id: str,
+    service: str,
+    conversation_history: list[dict]
+):
+    """会話を分析して特性を抽出・保存"""
+    global agent
+
+    try:
+        result = await agent.analyze_conversation(
+            user_id=user_id,
+            session_id=session_id,
+            service=service,
+            conversation_history=conversation_history
+        )
+        return result
+    except Exception as e:
+        logger.error(f"会話分析エラー: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
