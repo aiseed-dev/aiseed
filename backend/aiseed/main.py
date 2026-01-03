@@ -21,7 +21,7 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from agent.core import AIseedAgent
-from agent.prompts import get_prompt, PROMPTS
+from agent.prompts import get_prompt, PROMPTS, SERVICES, get_service_info
 from memory.store import UserMemory
 
 # ==================== 設定 ====================
@@ -210,8 +210,13 @@ async def root():
     """ルートエンドポイント"""
     return {
         "message": "AIseed API Server",
-        "version": "2.0.0",
-        "services": ["spark", "grow", "create", "learn"],
+        "version": "2.1.0",
+        "philosophy": "AIと人が共に成長する",
+        "services": {
+            "spark": "✨ 自分を知る - 対話から能力と「らしさ」を発見",
+            "grow": "🌱 自然と向き合い、育てる - 野菜・子ども・自分を育てる",
+            "create": "🎨 あなたのAIで創る - BYOA（Bring Your Own AI）",
+        },
         "note": "このAPIはgateway経由でアクセスしてください"
     }
 
@@ -236,21 +241,21 @@ async def spark_conversation(request: ConversationRequest):
 
 @app.post("/internal/grow/conversation", response_model=ConversationResponse)
 async def grow_conversation(request: ConversationRequest):
-    """Grow - 栽培・料理"""
+    """Grow - 自然と向き合い、育てる（野菜・子ども・自分）"""
     logger.info(f"[Grow] user={request.user_id or 'anon'} message={request.user_message[:50]}...")
     return await handle_conversation("grow", request)
 
 @app.post("/internal/create/conversation", response_model=ConversationResponse)
 async def create_conversation(request: ConversationRequest):
-    """Create - Web制作"""
+    """Create - BYOA（Bring Your Own AI）で創る"""
     logger.info(f"[Create] user={request.user_id or 'anon'} message={request.user_message[:50]}...")
     return await handle_conversation("create", request)
 
 @app.post("/internal/learn/conversation", response_model=ConversationResponse)
 async def learn_conversation(request: ConversationRequest):
-    """Learn - AIと一緒にAIの使い方を学ぶ"""
-    logger.info(f"[Learn] user={request.user_id or 'anon'} message={request.user_message[:50]}...")
-    return await handle_conversation("learn", request)
+    """Learn - Createに統合（後方互換性のため維持）"""
+    logger.info(f"[Learn→Create] user={request.user_id or 'anon'} message={request.user_message[:50]}...")
+    return await handle_conversation("create", request)  # Createにリダイレクト
 
 # ==================== ユーザープロファイル ====================
 @app.get("/internal/user/{user_id}/profile", response_model=UserProfileResponse)
