@@ -8,29 +8,247 @@ AIseed API テストスクリプト
 - Create: BYOA - あなたのAIで創る
 
 使用方法:
-    # Gateway経由でテスト
-    python test_api.py
+    # オフラインテスト（サーバー不要）
+    python test_api.py --config     # 設定確認
+    python test_api.py --modules    # モジュール確認
+    python test_api.py --offline    # 全オフラインテスト
 
-    # API直接テスト
-    python test_api.py --direct
-
-    # Sparkテスト
-    python test_api.py --spark
-
-    # Growテスト
-    python test_api.py --grow
-
-    # Createテスト
-    python test_api.py --create
+    # APIテスト（サーバー必要）
+    python test_api.py              # Gateway経由
+    python test_api.py --direct     # API直接
+    python test_api.py --spark      # Sparkおしゃべり
+    python test_api.py --experience # Spark体験
+    python test_api.py --grow       # Grow
+    python test_api.py --create     # Create
+    python test_api.py --all        # 全サービス
 """
-import requests
-import json
 import sys
+import os
+
+# パスを追加（configモジュールのため）
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import json
 import uuid
 
 # テスト対象
 GATEWAY_URL = "http://localhost:8000"
 API_URL = "http://localhost:8001"
+
+
+# ===========================================
+# オフラインテスト（サーバー不要）
+# ===========================================
+
+def test_config():
+    """設定ファイルの確認（オフライン）"""
+    print("=== 設定確認テスト ===\n")
+
+    try:
+        from config import (
+            AI_PROVIDERS,
+            CURRENT_PROVIDER,
+            MODEL_ASSIGNMENT,
+            TASK_CLASSIFICATION,
+            LOG_LEVELS,
+            SERVER,
+            MEMORY,
+            get_model_id,
+            get_model_info,
+        )
+        print("✓ config モジュール読み込み成功\n")
+
+        # プロバイダー設定
+        print("--- AI Providers ---")
+        for provider, info in AI_PROVIDERS.items():
+            print(f"  {provider}: {info['name']}")
+            for model_key, model_id in info['models'].items():
+                marker = " (default)" if model_key == info['default_model'] else ""
+                print(f"    - {model_key}: {model_id}{marker}")
+        print(f"\n  現在のプロバイダー: {CURRENT_PROVIDER}\n")
+
+        # モデル割り当て
+        print("--- Model Assignment ---")
+        for task_type, model_key in MODEL_ASSIGNMENT.items():
+            print(f"  {task_type}: {model_key}")
+        print()
+
+        # タスク分類
+        print("--- Task Classification ---")
+        by_type = {}
+        for task, task_type in TASK_CLASSIFICATION.items():
+            by_type.setdefault(task_type, []).append(task)
+
+        for task_type in ["heavy", "medium", "light"]:
+            tasks = by_type.get(task_type, [])
+            print(f"  {task_type}:")
+            for task in tasks:
+                model_info = get_model_info(task)
+                print(f"    - {task} → {model_info['model_key']}")
+        print()
+
+        # ログ設定
+        print("--- Log Levels ---")
+        for logger, level in LOG_LEVELS.items():
+            print(f"  {logger}: {level}")
+        print()
+
+        # サーバー設定
+        print("--- Server ---")
+        print(f"  Host: {SERVER['host']}")
+        print(f"  Port: {SERVER['port']}")
+        print()
+
+        # メモリ設定
+        print("--- Memory ---")
+        print(f"  Base Path: {MEMORY['base_path']}")
+        print()
+
+        # 関数テスト
+        print("--- Function Tests ---")
+        test_tasks = ["spark_conversation", "grow_conversation", "health_check"]
+        for task in test_tasks:
+            info = get_model_info(task)
+            print(f"  get_model_info('{task}'):")
+            print(f"    → provider={info['provider']}, model={info['model_key']}, type={info['task_type']}")
+        print()
+
+        return True
+
+    except Exception as e:
+        print(f"✗ エラー: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+def test_modules():
+    """モジュールのインポート確認（オフライン）"""
+    print("=== モジュール確認テスト ===\n")
+
+    modules_to_test = [
+        ("config", "設定"),
+        ("config.settings", "設定値"),
+        ("config.logging", "ログ"),
+        ("agent.core", "エージェント"),
+        ("agent.prompts", "プロンプト"),
+        ("agent.tools", "ツール"),
+        ("agent.tools.experience", "体験タスク"),
+        ("memory.store", "メモリ"),
+    ]
+
+    success_count = 0
+    for module_name, description in modules_to_test:
+        try:
+            module = __import__(module_name, fromlist=[''])
+            print(f"✓ {module_name} ({description})")
+
+            # モジュールの主要な属性を表示
+            attrs = [a for a in dir(module) if not a.startswith('_')]
+            if len(attrs) > 0:
+                preview = attrs[:5]
+                more = f" ... (+{len(attrs)-5})" if len(attrs) > 5 else ""
+                print(f"    exports: {', '.join(preview)}{more}")
+
+            success_count += 1
+        except Exception as e:
+            print(f"✗ {module_name} ({description})")
+            print(f"    エラー: {e}")
+
+    print(f"\n結果: {success_count}/{len(modules_to_test)} モジュール成功\n")
+    return success_count == len(modules_to_test)
+
+
+def test_prompts():
+    """プロンプト確認（オフライン）"""
+    print("=== プロンプト確認テスト ===\n")
+
+    try:
+        from agent.prompts import PROMPTS, SERVICES, get_prompt, get_service_info
+        print("✓ prompts モジュール読み込み成功\n")
+
+        print("--- Services ---")
+        for service_id, info in SERVICES.items():
+            print(f"\n  {service_id}: {info['name']}")
+            print(f"    {info['description']}")
+
+        print("\n--- Prompts ---")
+        for service in SERVICES.keys():
+            prompt = get_prompt(service)
+            preview = prompt[:100].replace('\n', ' ')
+            print(f"\n  [{service}]")
+            print(f"    {preview}...")
+            print(f"    (全{len(prompt)}文字)")
+
+        return True
+
+    except Exception as e:
+        print(f"✗ エラー: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+def test_experience_tasks():
+    """体験タスク確認（オフライン）"""
+    print("=== 体験タスク確認テスト ===\n")
+
+    try:
+        from agent.tools.experience import TASKS, TASK_ORDER, SparkExperience
+        print("✓ experience モジュール読み込み成功\n")
+
+        print("--- タスク一覧 ---")
+        for i, task_id in enumerate(TASK_ORDER, 1):
+            task = TASKS[task_id]
+            print(f"\n  {i}. {task_id}: {task['name']}")
+            print(f"     タイプ: {task['type']}")
+            print(f"     説明: {task['description'][:50]}...")
+
+        print(f"\n合計: {len(TASK_ORDER)} タスク\n")
+        return True
+
+    except Exception as e:
+        print(f"✗ エラー: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+def test_offline():
+    """全オフラインテスト"""
+    print("=== 全オフラインテスト ===\n")
+    print("サーバーを起動せずにテストできる項目を確認します。\n")
+
+    results = []
+
+    print("="*50)
+    results.append(("設定", test_config()))
+
+    print("="*50)
+    results.append(("モジュール", test_modules()))
+
+    print("="*50)
+    results.append(("プロンプト", test_prompts()))
+
+    print("="*50)
+    results.append(("体験タスク", test_experience_tasks()))
+
+    # サマリー
+    print("="*50)
+    print("\n=== オフラインテスト結果 ===\n")
+    for name, success in results:
+        status = "✓ 成功" if success else "✗ 失敗"
+        print(f"  {name}: {status}")
+
+    success_count = sum(1 for _, s in results if s)
+    print(f"\n結果: {success_count}/{len(results)} テスト成功")
+
+    return all(s for _, s in results)
+
+
+# ===========================================
+# APIテスト（サーバー必要）
+# ===========================================
 
 def print_response(response, max_chars=200):
     """レスポンスを整形して表示"""
@@ -440,86 +658,147 @@ def print_services():
 """)
 
 
+def print_help():
+    """ヘルプを表示"""
+    print("""
+使用方法: python test_api.py [オプション]
+
+オフラインテスト（サーバー不要）:
+  --config      設定ファイルの確認
+  --modules     モジュールのインポート確認
+  --prompts     プロンプトの確認
+  --tasks       体験タスクの確認
+  --offline     全オフラインテスト
+
+APIテスト（サーバー必要）:
+  (なし)        Gateway経由テスト
+  --direct      API直接テスト
+  --spark       Spark会話フローテスト（💬 おしゃべり）
+  --experience  Spark体験タスクテスト（🎮 体験）
+  --grow        Grow会話フローテスト
+  --create      Create会話フローテスト
+  --memory      メモリ機能テスト
+  --rate        レート制限テスト
+  --compare     Spark比較テスト（おしゃべり vs 体験）
+  --all         全サービステスト
+
+その他:
+  --help        このヘルプを表示
+""")
+
+
 if __name__ == "__main__":
     print("AIseed API テスト\n")
-    print_services()
 
-    mode = "gateway"  # デフォルト
-    if "--direct" in sys.argv:
-        mode = "direct"
-    elif "--spark" in sys.argv:
-        mode = "spark"
-    elif "--experience" in sys.argv:
-        mode = "experience"
-    elif "--grow" in sys.argv:
-        mode = "grow"
-    elif "--create" in sys.argv:
-        mode = "create"
-    elif "--memory" in sys.argv:
-        mode = "memory"
-    elif "--rate" in sys.argv:
-        mode = "rate"
-    elif "--all" in sys.argv:
-        mode = "all"
-    elif "--compare" in sys.argv:
-        mode = "compare"
+    # ヘルプ
+    if "--help" in sys.argv or "-h" in sys.argv:
+        print_help()
+        sys.exit(0)
 
-    try:
-        if mode == "direct":
-            print("モード: API直接テスト\n")
-            test_api_direct()
-        elif mode == "spark":
-            print("モード: Spark会話フローテスト（💬 おしゃべり）\n")
-            test_spark_flow()
-        elif mode == "experience":
-            print("モード: Spark体験タスクテスト（🎮 体験）\n")
-            test_experience_flow()
-        elif mode == "grow":
-            print("モード: Grow会話フローテスト\n")
-            test_grow_flow()
-        elif mode == "create":
-            print("モード: Create会話フローテスト\n")
-            test_create_flow()
-        elif mode == "memory":
-            print("モード: メモリ機能テスト\n")
-            test_memory()
-        elif mode == "rate":
-            print("モード: レート制限テスト\n")
-            test_rate_limit()
-        elif mode == "compare":
-            print("モード: Spark比較テスト（おしゃべり vs 体験）\n")
-            print("="*50)
-            print("💬 おしゃべりで発見")
-            print("="*50 + "\n")
-            test_spark_flow()
-            print("\n" + "="*50)
-            print("🎮 体験で発見")
-            print("="*50 + "\n")
-            test_experience_flow()
-        elif mode == "all":
-            print("モード: 全サービステスト\n")
-            test_spark_flow()
-            print("\n" + "="*50 + "\n")
-            test_experience_flow()
-            print("\n" + "="*50 + "\n")
-            test_grow_flow()
-            print("\n" + "="*50 + "\n")
-            test_create_flow()
-        else:
-            print("モード: Gateway経由テスト\n")
-            print("注意: Gateway と API の両方が起動している必要があります\n")
-            test_gateway()
-            test_rate_limit()
+    # オフラインテストの判定
+    offline_modes = ["--config", "--modules", "--prompts", "--tasks", "--offline"]
+    is_offline = any(mode in sys.argv for mode in offline_modes)
 
+    if is_offline:
+        # オフラインテスト
+        if "--config" in sys.argv:
+            print("モード: 設定確認テスト\n")
+            test_config()
+        elif "--modules" in sys.argv:
+            print("モード: モジュール確認テスト\n")
+            test_modules()
+        elif "--prompts" in sys.argv:
+            print("モード: プロンプト確認テスト\n")
+            test_prompts()
+        elif "--tasks" in sys.argv:
+            print("モード: 体験タスク確認テスト\n")
+            test_experience_tasks()
+        elif "--offline" in sys.argv:
+            print("モード: 全オフラインテスト\n")
+            test_offline()
         print("=== テスト完了 ===")
-    except requests.exceptions.ConnectionError as e:
-        print(f"エラー: サーバーに接続できません")
-        if mode in ["direct", "spark", "experience", "grow", "create", "memory", "all", "compare"]:
-            print(f"API Server ({API_URL}) を起動してください")
-            print("起動コマンド: cd backend/aiseed && python main.py")
-        else:
-            print(f"Gateway ({GATEWAY_URL}) を起動してください")
-    except Exception as e:
-        print(f"エラー: {e}")
-        import traceback
-        traceback.print_exc()
+    else:
+        # APIテスト（requestsが必要）
+        import requests
+
+        print_services()
+
+        mode = "gateway"  # デフォルト
+        if "--direct" in sys.argv:
+            mode = "direct"
+        elif "--spark" in sys.argv:
+            mode = "spark"
+        elif "--experience" in sys.argv:
+            mode = "experience"
+        elif "--grow" in sys.argv:
+            mode = "grow"
+        elif "--create" in sys.argv:
+            mode = "create"
+        elif "--memory" in sys.argv:
+            mode = "memory"
+        elif "--rate" in sys.argv:
+            mode = "rate"
+        elif "--all" in sys.argv:
+            mode = "all"
+        elif "--compare" in sys.argv:
+            mode = "compare"
+
+        try:
+            if mode == "direct":
+                print("モード: API直接テスト\n")
+                test_api_direct()
+            elif mode == "spark":
+                print("モード: Spark会話フローテスト（💬 おしゃべり）\n")
+                test_spark_flow()
+            elif mode == "experience":
+                print("モード: Spark体験タスクテスト（🎮 体験）\n")
+                test_experience_flow()
+            elif mode == "grow":
+                print("モード: Grow会話フローテスト\n")
+                test_grow_flow()
+            elif mode == "create":
+                print("モード: Create会話フローテスト\n")
+                test_create_flow()
+            elif mode == "memory":
+                print("モード: メモリ機能テスト\n")
+                test_memory()
+            elif mode == "rate":
+                print("モード: レート制限テスト\n")
+                test_rate_limit()
+            elif mode == "compare":
+                print("モード: Spark比較テスト（おしゃべり vs 体験）\n")
+                print("="*50)
+                print("💬 おしゃべりで発見")
+                print("="*50 + "\n")
+                test_spark_flow()
+                print("\n" + "="*50)
+                print("🎮 体験で発見")
+                print("="*50 + "\n")
+                test_experience_flow()
+            elif mode == "all":
+                print("モード: 全サービステスト\n")
+                test_spark_flow()
+                print("\n" + "="*50 + "\n")
+                test_experience_flow()
+                print("\n" + "="*50 + "\n")
+                test_grow_flow()
+                print("\n" + "="*50 + "\n")
+                test_create_flow()
+            else:
+                print("モード: Gateway経由テスト\n")
+                print("注意: Gateway と API の両方が起動している必要があります\n")
+                test_gateway()
+                test_rate_limit()
+
+            print("=== テスト完了 ===")
+        except requests.exceptions.ConnectionError as e:
+            print(f"エラー: サーバーに接続できません")
+            if mode in ["direct", "spark", "experience", "grow", "create", "memory", "all", "compare"]:
+                print(f"API Server ({API_URL}) を起動してください")
+                print("起動コマンド: cd backend/aiseed && python main.py")
+            else:
+                print(f"Gateway ({GATEWAY_URL}) を起動してください")
+        except Exception as e:
+            print(f"エラー: {e}")
+            import traceback
+            traceback.print_exc()
