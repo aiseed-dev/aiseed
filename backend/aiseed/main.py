@@ -24,7 +24,7 @@ from agent.core import AIseedAgent
 from agent.prompts import get_prompt, PROMPTS, SERVICES, get_service_info
 from agent.tools.experience import SparkExperience, TaskResult, TASKS, TASK_ORDER
 from memory.store import UserMemory
-from config import get_model, get_model_id, get_config
+from config import get_model, get_model_id, get_config, setup_logging, get_logger
 
 # ==================== 設定 ====================
 class Settings(BaseSettings):
@@ -34,12 +34,6 @@ class Settings(BaseSettings):
     # Server
     host: str = "0.0.0.0"
     port: int = 8001  # Goのgatewayが8000を使用
-
-    # Logging
-    log_level: str = "INFO"
-
-    # Development
-    dev_mode: bool = False
 
     # Memory
     memory_base_path: str = "user_memory"
@@ -51,12 +45,8 @@ class Settings(BaseSettings):
 settings = Settings()
 
 # ==================== ログ設定 ====================
-LOG_FORMAT = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
-logging.basicConfig(
-    level=getattr(logging, settings.log_level.upper(), logging.INFO),
-    format=LOG_FORMAT,
-)
-logger = logging.getLogger("aiseed.api")
+setup_logging()
+logger = get_logger("aiseed.api")
 
 # ==================== グローバル ====================
 db_pool: Optional[asyncpg.Pool] = None
