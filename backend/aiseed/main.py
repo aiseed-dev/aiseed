@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from agent.core import AIseedAgent
 from agent.prompts import get_prompt, PROMPTS, SERVICES, get_service_info
+from agent.tools.experience import SparkExperience, TaskResult, TASKS, TASK_ORDER
 from memory.store import UserMemory
 
 # ==================== 設定 ====================
@@ -59,6 +60,7 @@ logger = logging.getLogger("aiseed.api")
 # ==================== グローバル ====================
 db_pool: Optional[asyncpg.Pool] = None
 agent: Optional[AIseedAgent] = None
+spark_experience: Optional[SparkExperience] = None
 
 # ==================== データベース ====================
 async def init_db():
@@ -88,13 +90,17 @@ async def close_db():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """アプリケーションライフサイクル管理"""
-    global agent
+    global agent, spark_experience
 
     await init_db()
 
     # エージェントの初期化
     agent = AIseedAgent(memory_base_path=settings.memory_base_path)
     logger.info(f"AIseed Agent 初期化完了 (memory: {settings.memory_base_path})")
+
+    # 体験タスクの初期化
+    spark_experience = SparkExperience(memory=agent.memory)
+    logger.info("Spark Experience 初期化完了")
 
     logger.info("AIseed API Server 起動")
     yield
@@ -210,10 +216,16 @@ async def root():
     """ルートエンドポイント"""
     return {
         "message": "AIseed API Server",
-        "version": "2.1.0",
+        "version": "2.2.0",
         "philosophy": "AIと人が共に成長する",
         "services": {
-            "spark": "✨ 自分を知る - 対話から能力と「らしさ」を発見",
+            "spark": {
+                "description": "✨ 自分を知る",
+                "modes": {
+                    "conversation": "💬 おしゃべりで発見",
+                    "experience": "🎮 体験で発見（NEW）"
+                }
+            },
             "grow": "🌱 自然と向き合い、育てる - 野菜・子ども・自分を育てる",
             "create": "🎨 あなたのAIで創る - BYOA（Bring Your Own AI）",
         },
@@ -235,9 +247,93 @@ async def health_check():
 # ==================== 会話エンドポイント ====================
 @app.post("/internal/spark/conversation", response_model=ConversationResponse)
 async def spark_conversation(request: ConversationRequest):
-    """Spark - 強み発見"""
-    logger.info(f"[Spark] user={request.user_id or 'anon'} message={request.user_message[:50]}...")
+    """Spark - 強み発見（おしゃべりモード）"""
+    logger.info(f"[Spark/Chat] user={request.user_id or 'anon'} message={request.user_message[:50]}...")
     return await handle_conversation("spark", request)
+
+
+# ==================== Spark体験タスク ====================
+class ExperienceStartRequest(BaseModel):
+    user_id: str
+    session_id: Optional[str] = None
+
+
+class ExperienceResultRequest(BaseModel):
+    task_id: str
+    user_id: str
+    session_id: str
+    tap_position: Optional[dict] = None
+    selected_option: Optional[str] = None
+    other_text: Optional[str] = None
+    arranged_positions: Optional[list] = None
+    tap_sequence: Optional[list] = None
+    selected_color: Optional[str] = None
+    duration_ms: int
+    hesitation_count: int = 0
+
+
+@app.post("/internal/spark/experience/start")
+async def start_spark_experience(request: ExperienceStartRequest):
+    """Spark体験タスクを開始"""
+    global spark_experience
+
+    import uuid
+    session_id = request.session_id or f"exp_{uuid.uuid4().hex[:12]}"
+
+    logger.info(f"[Spark/Experience] START user={request.user_id} session={session_id}")
+
+    result = spark_experience.start_session(
+        user_id=request.user_id,
+        session_id=session_id
+    )
+    return result
+
+
+@app.get("/internal/spark/experience/tasks")
+async def get_experience_tasks():
+    """利用可能なタスク一覧を取得"""
+    return {
+        "tasks": [
+            {
+                "id": task_id,
+                "name": TASKS[task_id]["name"],
+                "type": TASKS[task_id]["type"],
+            }
+            for task_id in TASK_ORDER
+        ],
+        "total": len(TASK_ORDER)
+    }
+
+
+@app.get("/internal/spark/experience/task/{task_id}")
+async def get_experience_task(task_id: str):
+    """特定のタスク情報を取得"""
+    global spark_experience
+    return spark_experience.get_task(task_id)
+
+
+@app.post("/internal/spark/experience/submit")
+async def submit_experience_result(request: ExperienceResultRequest):
+    """タスク結果を送信"""
+    global spark_experience
+
+    logger.info(f"[Spark/Experience] SUBMIT task={request.task_id} user={request.user_id}")
+
+    result = TaskResult(
+        task_id=request.task_id,
+        user_id=request.user_id,
+        session_id=request.session_id,
+        tap_position=request.tap_position,
+        selected_option=request.selected_option,
+        other_text=request.other_text,
+        arranged_positions=request.arranged_positions,
+        tap_sequence=request.tap_sequence,
+        selected_color=request.selected_color,
+        duration_ms=request.duration_ms,
+        hesitation_count=request.hesitation_count,
+    )
+
+    return spark_experience.submit_result(result)
 
 @app.post("/internal/grow/conversation", response_model=ConversationResponse)
 async def grow_conversation(request: ConversationRequest):

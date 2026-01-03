@@ -296,6 +296,119 @@ def test_memory():
     print_response(response, max_chars=1000)
 
 
+def test_experience_flow():
+    """Spark体験タスクのテスト - 体験で発見"""
+    print("=== Spark 体験タスクテスト ===")
+    print("テーマ: 🎮 体験で発見\n")
+
+    user_id = f"exp_test_{uuid.uuid4().hex[:8]}"
+
+    # セッション開始
+    print("--- セッション開始 ---")
+    payload = {"user_id": user_id}
+    response = requests.post(f"{API_URL}/internal/spark/experience/start", json=payload)
+    print_response(response)
+
+    if response.status_code != 200:
+        print("Error: セッション開始に失敗")
+        return
+
+    data = response.json()
+    session_id = data["session_id"]
+    print(f"Session ID: {session_id}")
+    print(f"Message: {data.get('message', '')}\n")
+
+    # タスク一覧を取得
+    print("--- タスク一覧 ---")
+    response = requests.get(f"{API_URL}/internal/spark/experience/tasks")
+    print_response(response)
+
+    # 各タスクをシミュレート
+    simulated_results = [
+        {
+            "task_id": "observe",
+            "tap_position": {"x": 0.7, "y": 0.3},  # 右上をタップ（細部注目）
+            "duration_ms": 5000,
+        },
+        {
+            "task_id": "sound",
+            "selected_option": "forest",  # 森を選択（抽象的）
+            "duration_ms": 3000,
+        },
+        {
+            "task_id": "arrange",
+            "arranged_positions": [
+                {"id": "circle", "x": 0.2, "y": 0.2},
+                {"id": "square", "x": 0.4, "y": 0.2},
+                {"id": "triangle", "x": 0.6, "y": 0.2},
+                {"id": "star", "x": 0.8, "y": 0.2},
+                {"id": "heart", "x": 0.5, "y": 0.5},
+            ],
+            "duration_ms": 8000,
+        },
+        {
+            "task_id": "story",
+            "selected_option": "mountain",
+            "duration_ms": 4000,
+        },
+        {
+            "task_id": "rhythm",
+            "tap_sequence": [
+                {"time_ms": 0, "x": 0.5, "y": 0.5},
+                {"time_ms": 500, "x": 0.5, "y": 0.5},
+                {"time_ms": 1000, "x": 0.5, "y": 0.5},
+                {"time_ms": 1500, "x": 0.5, "y": 0.5},
+                {"time_ms": 2000, "x": 0.5, "y": 0.5},
+            ],
+            "duration_ms": 10000,
+        },
+        {
+            "task_id": "color",
+            "selected_color": "#45B7D1",
+            "duration_ms": 2000,
+        },
+    ]
+
+    for i, result in enumerate(simulated_results, 1):
+        print(f"--- タスク {i}/{len(simulated_results)}: {result['task_id']} ---")
+
+        payload = {
+            "user_id": user_id,
+            "session_id": session_id,
+            **result
+        }
+        response = requests.post(f"{API_URL}/internal/spark/experience/submit", json=payload)
+
+        if response.status_code == 200:
+            data = response.json()
+            status = data.get("status")
+            print(f"Status: {status}")
+
+            if status == "continue":
+                next_task = data.get("next_task", {})
+                print(f"Next: {next_task.get('name', 'N/A')}")
+            elif status == "completed":
+                print("\n--- 完了！フィードバック ---")
+                feedback = data.get("feedback", {})
+                print(f"Summary:\n{feedback.get('summary', '')}")
+                print(f"\nTendencies: {feedback.get('tendencies', [])}")
+                print(f"\nSuggestions:")
+                for sug in data.get("suggestions", []):
+                    print(f"  - [{sug.get('service')}] {sug.get('title')}")
+        else:
+            print(f"Error: {response.text}")
+            break
+
+        print()
+
+    # プロファイルを確認
+    print("--- 最終プロファイル ---")
+    response = requests.get(f"{API_URL}/internal/user/{user_id}/profile")
+    print_response(response, max_chars=500)
+
+    return user_id
+
+
 def test_rate_limit():
     """レート制限テスト"""
     print("=== レート制限テスト ===")
@@ -316,7 +429,8 @@ def print_services():
 === aiseed 3サービス ===
 
 ✨ Spark: 自分を知る
-   対話から能力と「らしさ」を発見
+   💬 おしゃべりで発見
+   🎮 体験で発見（NEW）
 
 🌱 Grow: 自然と向き合い、育てる
    野菜・子ども・自分を育てる
@@ -335,6 +449,8 @@ if __name__ == "__main__":
         mode = "direct"
     elif "--spark" in sys.argv:
         mode = "spark"
+    elif "--experience" in sys.argv:
+        mode = "experience"
     elif "--grow" in sys.argv:
         mode = "grow"
     elif "--create" in sys.argv:
@@ -345,14 +461,19 @@ if __name__ == "__main__":
         mode = "rate"
     elif "--all" in sys.argv:
         mode = "all"
+    elif "--compare" in sys.argv:
+        mode = "compare"
 
     try:
         if mode == "direct":
             print("モード: API直接テスト\n")
             test_api_direct()
         elif mode == "spark":
-            print("モード: Spark会話フローテスト\n")
+            print("モード: Spark会話フローテスト（💬 おしゃべり）\n")
             test_spark_flow()
+        elif mode == "experience":
+            print("モード: Spark体験タスクテスト（🎮 体験）\n")
+            test_experience_flow()
         elif mode == "grow":
             print("モード: Grow会話フローテスト\n")
             test_grow_flow()
@@ -365,9 +486,21 @@ if __name__ == "__main__":
         elif mode == "rate":
             print("モード: レート制限テスト\n")
             test_rate_limit()
+        elif mode == "compare":
+            print("モード: Spark比較テスト（おしゃべり vs 体験）\n")
+            print("="*50)
+            print("💬 おしゃべりで発見")
+            print("="*50 + "\n")
+            test_spark_flow()
+            print("\n" + "="*50)
+            print("🎮 体験で発見")
+            print("="*50 + "\n")
+            test_experience_flow()
         elif mode == "all":
             print("モード: 全サービステスト\n")
             test_spark_flow()
+            print("\n" + "="*50 + "\n")
+            test_experience_flow()
             print("\n" + "="*50 + "\n")
             test_grow_flow()
             print("\n" + "="*50 + "\n")
@@ -381,7 +514,7 @@ if __name__ == "__main__":
         print("=== テスト完了 ===")
     except requests.exceptions.ConnectionError as e:
         print(f"エラー: サーバーに接続できません")
-        if mode in ["direct", "spark", "grow", "create", "memory", "all"]:
+        if mode in ["direct", "spark", "experience", "grow", "create", "memory", "all", "compare"]:
             print(f"API Server ({API_URL}) を起動してください")
             print("起動コマンド: cd backend/aiseed && python main.py")
         else:
