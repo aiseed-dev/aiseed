@@ -142,6 +142,92 @@ SCENARIOS = {
                 ],
                 "expected": ["共感", "具体的な対応策", "子どもの気持ちの解説"]
             },
+            # === リアル質問（自然農グループ風） ===
+            {
+                "id": "grow_real_tomato_disease",
+                "name": "[リアル] トマトの病気",
+                "source": "自然農グループ",
+                "persona": "adult",
+                "messages": [
+                    "トマトの葉が下から黄色くなってきました",
+                    "農薬は使いたくないんですが、何か対策ありますか？",
+                    "自然農法で育てています",
+                ],
+                "expected": ["病気の可能性の説明", "自然な対処法", "予防策"]
+            },
+            {
+                "id": "grow_real_companion",
+                "name": "[リアル] コンパニオンプランツ",
+                "source": "自然農グループ",
+                "persona": "adult",
+                "messages": [
+                    "コンパニオンプランツって本当に効果ありますか？",
+                    "トマトとバジルを一緒に植えようと思っています",
+                    "他におすすめの組み合わせがあれば教えてください",
+                ],
+                "expected": ["科学的根拠の説明", "具体的な組み合わせ例", "注意点"]
+            },
+            {
+                "id": "grow_real_beginner_sept",
+                "name": "[リアル] 9月からの野菜",
+                "source": "家庭菜園グループ",
+                "persona": "adult",
+                "messages": [
+                    "9月から始められる野菜って何がありますか？",
+                    "マンションのベランダで、日当たりは半日程度です",
+                    "初心者なので失敗しにくいものがいいです",
+                ],
+                "expected": ["時期に合った野菜の提案", "条件に合わせた選択", "初心者向けアドバイス"]
+            },
+            {
+                "id": "grow_real_pest_natural",
+                "name": "[リアル] 自然な虫除け",
+                "source": "自然農グループ",
+                "persona": "parent",
+                "messages": [
+                    "子どもと一緒に野菜を育てているんですが",
+                    "虫がついてきて困っています",
+                    "子どもに安全な虫除けの方法を教えてください",
+                ],
+                "expected": ["安全な方法の提案", "子どもと一緒にできる対策", "具体的な手順"]
+            },
+            # === リアル質問（子育てグループ風） ===
+            {
+                "id": "grow_real_toddler_anger",
+                "name": "[リアル] イヤイヤ期",
+                "source": "子育てグループ",
+                "persona": "parent",
+                "messages": [
+                    "2歳半の子のイヤイヤ期がひどくて...",
+                    "何を言ってもイヤ！って言われます",
+                    "つい怒ってしまって自己嫌悪になります",
+                ],
+                "expected": ["共感", "発達段階の説明", "具体的な対応策", "親へのケア"]
+            },
+            {
+                "id": "grow_real_screen_time",
+                "name": "[リアル] スクリーンタイム",
+                "source": "子育てグループ",
+                "persona": "parent",
+                "messages": [
+                    "4歳の子がYouTubeばかり見たがります",
+                    "制限すると癇癪を起こすんです",
+                    "どうやってバランスを取ればいいですか？",
+                ],
+                "expected": ["共感", "段階的な制限方法", "代替活動の提案"]
+            },
+            {
+                "id": "grow_real_sibling_fight",
+                "name": "[リアル] きょうだいケンカ",
+                "source": "子育てグループ",
+                "persona": "parent",
+                "messages": [
+                    "6歳と3歳のきょうだいが毎日ケンカします",
+                    "上の子が下の子を叩くこともあって",
+                    "どう仲裁すればいいかわかりません",
+                ],
+                "expected": ["共感", "年齢に応じた対応", "公平な仲裁方法"]
+            },
         ]
     },
     "create": {
@@ -311,12 +397,24 @@ def print_scenarios():
     for service_id, service in SCENARIOS.items():
         print(f"\n【{service['name']}】")
         print(f"  目的: {service['goal']}")
-        print(f"  テストケース:")
-        for tc in service["test_cases"]:
-            persona = PERSONAS[tc["persona"]]
-            print(f"    - {tc['id']}: {tc['name']}")
-            print(f"      ペルソナ: {persona['name']}")
-            print(f"      期待: {', '.join(tc['expected'])}")
+
+        # 合成とリアルを分けて表示
+        synthetic = [tc for tc in service["test_cases"] if "source" not in tc]
+        real = [tc for tc in service["test_cases"] if "source" in tc]
+
+        if synthetic:
+            print(f"  テストケース（合成）:")
+            for tc in synthetic:
+                persona = PERSONAS[tc["persona"]]
+                print(f"    - {tc['id']}: {tc['name']}")
+                print(f"      ペルソナ: {persona['name']}")
+
+        if real:
+            print(f"  テストケース（リアル質問）:")
+            for tc in real:
+                persona = PERSONAS[tc["persona"]]
+                print(f"    - {tc['id']}: {tc['name']}")
+                print(f"      ソース: {tc['source']} / ペルソナ: {persona['name']}")
 
 
 def print_personas():
