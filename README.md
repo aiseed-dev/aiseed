@@ -1,6 +1,6 @@
 # AIseed 🌱
 
-AIと人が共に成長するプラットフォーム
+AIと共に成長するプラットフォーム
 
 ## 哲学
 
@@ -12,7 +12,7 @@ AIの時代だからこそ、デジタルとアナログの両方が大切。
 | サービス | 説明 |
 |---------|------|
 | **Spark** ✨ | 自分を知る - 対話や体験から強みと「らしさ」を発見 |
-| **Grow** 🌱 | 育てる - 野菜・子ども・自分を育てる |
+| **Grow** 🌱 | 育てる - 栽培・遊び・成長記録 |
 | **Create** 🎨 | BYOA - あなたのAIで創る |
 
 ### Spark - 自分を知る
@@ -45,17 +45,19 @@ aiseed/
 │       ├── screens/spark/  # Spark（モード選択・体験タスク）
 │       ├── screens/grow/   # Grow
 │       └── screens/create/ # Create
-└── backend/aiseed/         # FastAPI + Claude Agent SDK
-    ├── agent/              # AIエージェント
-    │   ├── core.py         # AIseedAgent
-    │   ├── prompts.py      # プロンプト定義
-    │   └── tools/          # ツール群
-    │       ├── insight.py  # 特性記録
-    │       ├── skill.py    # スキル生成（BYOA）
-    │       ├── history.py  # 履歴管理
-    │       └── experience.py # 体験タスク
-    └── memory/             # メモリ管理
-        └── store.py        # ユーザーメモリ
+└── backend/
+    ├── gateway/            # APIゲートウェイ Go
+    └── aiseed/             # FastAPI
+        ├── agent/          # AIエージェント
+        │   ├── core.py     # AIseedAgent
+        │   ├── prompts.py  # プロンプト定義
+        │   └── tools/      # ツール群
+        │       ├── insight.py  # 特性記録
+        │       ├── skill.py    # スキル生成（BYOA）
+        │       ├── history.py  # 履歴管理
+        │       └── experience.py # 体験タスク
+        └── memory/         # メモリ管理
+            └── store.py    # ユーザーメモリ
 ```
 
 ## セットアップ
