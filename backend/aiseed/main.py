@@ -25,6 +25,13 @@ from agent.prompts import get_prompt, PROMPTS, SERVICES, get_service_info
 from agent.tools.experience import SparkExperience, TaskResult, TASKS, TASK_ORDER
 from memory.store import UserMemory
 from config import get_model_id, get_model_info, setup_logging, get_logger, SERVER, MEMORY
+from shipment import ShipmentService
+from shipment.models import (
+    ShipmentInfo, ShipmentItem, Subscriber,
+    ShipmentPostRequest, ShipmentPostStructuredRequest,
+    SubscribeRequest, NotificationResult
+)
+from shipment.parser import ShipmentParser, parse_with_ai
 
 # ==================== 設定 ====================
 class Settings(BaseSettings):
@@ -52,6 +59,7 @@ logger = get_logger("aiseed.api")
 db_pool: Optional[asyncpg.Pool] = None
 agent: Optional[AIseedAgent] = None
 spark_experience: Optional[SparkExperience] = None
+shipment_service: Optional[ShipmentService] = None
 
 # ==================== データベース ====================
 async def init_db():
@@ -81,7 +89,7 @@ async def close_db():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """アプリケーションライフサイクル管理"""
-    global agent, spark_experience
+    global agent, spark_experience, shipment_service
 
     await init_db()
 
@@ -92,6 +100,10 @@ async def lifespan(app: FastAPI):
     # 体験タスクの初期化
     spark_experience = SparkExperience(memory=agent.memory)
     logger.info("Spark Experience 初期化完了")
+
+    # 出荷情報サービスの初期化
+    shipment_service = ShipmentService(base_path="shipment_data")
+    logger.info("Shipment Service 初期化完了")
 
     logger.info("AIseed API Server 起動")
     yield
@@ -484,6 +496,169 @@ async def analyze_conversation(
     except Exception as e:
         logger.error(f"会話分析エラー: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# ==================== 出荷情報 ====================
+@app.post("/internal/shipment/post")
+async def post_shipment_natural(request: ShipmentPostRequest):
+    """
+    出荷情報を自然言語で投稿
+
+    例: "今日10時に道の駅ひまわりにトマト100円とナス150円出します"
+    """
+    global shipment_service, agent
+
+    logger.info(f"[Shipment] POST natural: farmer={request.farmer_id} msg={request.message[:50]}...")
+
+    # パーサーで解析
+    parser = ShipmentParser()
+    shipment = parser.parse(request.farmer_id, request.message)
+
+    if not shipment:
+        # AIで再解析を試みる
+        async def ai_query(prompt):
+            response = await agent.chat(
+                service="create",
+                user_message=prompt,
+                user_id=request.farmer_id,
+                task_name="parse_shipment"
+            )
+            return response
+
+        shipment = await parse_with_ai(request.farmer_id, request.message, ai_query)
+
+    if not shipment:
+        raise HTTPException(
+            status_code=400,
+            detail="出荷情報を解析できませんでした。もう少し具体的に入力してください。"
+        )
+
+    # 保存
+    saved = shipment_service.post_shipment(shipment)
+
+    # 購読者に通知
+    notify_result = await shipment_service.notify_subscribers(request.farmer_id, saved)
+
+    return {
+        "status": "posted",
+        "shipment": saved.model_dump(),
+        "notification": notify_result.model_dump()
+    }
+
+
+@app.post("/internal/shipment/post/structured")
+async def post_shipment_structured(request: ShipmentPostStructuredRequest):
+    """出荷情報を構造化データで投稿"""
+    global shipment_service
+
+    logger.info(f"[Shipment] POST structured: farmer={request.farmer_id}")
+
+    shipment = ShipmentInfo(
+        farmer_id=request.farmer_id,
+        date=request.date,
+        time=request.time,
+        location_name=request.location_name,
+        location_address=request.location_address,
+        items=request.items,
+        note=request.note,
+    )
+
+    saved = shipment_service.post_shipment(shipment)
+    notify_result = await shipment_service.notify_subscribers(request.farmer_id, saved)
+
+    return {
+        "status": "posted",
+        "shipment": saved.model_dump(),
+        "notification": notify_result.model_dump()
+    }
+
+
+@app.get("/internal/shipment/{farmer_id}/latest")
+async def get_latest_shipment(farmer_id: str):
+    """最新の出荷情報を取得"""
+    global shipment_service
+
+    shipment = shipment_service.get_latest_shipment(farmer_id)
+    if not shipment:
+        return {"status": "not_found", "shipment": None}
+
+    return {"status": "ok", "shipment": shipment.model_dump()}
+
+
+@app.get("/internal/shipment/{farmer_id}/today")
+async def get_today_shipments(farmer_id: str):
+    """今日の出荷情報を取得"""
+    global shipment_service
+
+    shipments = shipment_service.get_today_shipments(farmer_id)
+    return {
+        "status": "ok",
+        "date": datetime.now().strftime("%Y-%m-%d"),
+        "shipments": [s.model_dump() for s in shipments]
+    }
+
+
+@app.get("/internal/shipment/{farmer_id}/history")
+async def get_shipment_history(farmer_id: str, limit: int = 10, offset: int = 0):
+    """出荷情報の履歴を取得"""
+    global shipment_service
+
+    shipments = shipment_service.get_shipments(farmer_id, limit=limit, offset=offset)
+    return {
+        "status": "ok",
+        "shipments": [s.model_dump() for s in shipments],
+        "count": len(shipments)
+    }
+
+
+@app.get("/internal/shipment/{farmer_id}/page")
+async def get_shipment_page(farmer_id: str, farmer_name: str = ""):
+    """出荷情報ページのHTMLを取得"""
+    global shipment_service
+
+    html = shipment_service.generate_shipment_html(farmer_id, farmer_name)
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse(content=html)
+
+
+# ==================== 購読 ====================
+@app.post("/internal/subscribe")
+async def subscribe(request: SubscribeRequest):
+    """出荷情報の購読登録"""
+    global shipment_service
+
+    logger.info(f"[Subscribe] farmer={request.farmer_id} email={request.email}")
+
+    subscriber = Subscriber(
+        farmer_id=request.farmer_id,
+        email=request.email,
+        push_subscription=request.push_subscription,
+    )
+
+    saved = shipment_service.subscribe(subscriber)
+    return {"status": "subscribed", "subscriber_id": saved.id}
+
+
+@app.delete("/internal/subscribe")
+async def unsubscribe(farmer_id: str, email: str):
+    """購読解除"""
+    global shipment_service
+
+    logger.info(f"[Unsubscribe] farmer={farmer_id} email={email}")
+
+    success = shipment_service.unsubscribe(farmer_id, email)
+    if success:
+        return {"status": "unsubscribed"}
+    return {"status": "not_found"}
+
+
+@app.get("/internal/subscribe/{farmer_id}/count")
+async def get_subscriber_count(farmer_id: str):
+    """購読者数を取得"""
+    global shipment_service
+
+    subscribers = shipment_service.get_subscribers(farmer_id)
+    return {"count": len(subscribers)}
+
 
 if __name__ == "__main__":
     import uvicorn

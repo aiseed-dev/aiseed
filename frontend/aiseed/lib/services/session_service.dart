@@ -7,9 +7,11 @@ import '../config/api_config.dart';
 class SessionService {
   static const String _sessionIdKey = 'aiseed_session_id';
   static const String _sessionExpiryKey = 'aiseed_session_expiry';
+  static const String _userIdKey = 'aiseed_user_id';
 
   static String? _sessionId;
   static DateTime? _sessionExpiry;
+  static String? _userId;
 
   /// セッションIDを取得（なければ作成）
   static Future<String> getSessionId() async {
@@ -89,9 +91,41 @@ class SessionService {
   static Future<void> clearSession() async {
     _sessionId = null;
     _sessionExpiry = null;
+    _userId = null;
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_sessionIdKey);
     await prefs.remove(_sessionExpiryKey);
+    await prefs.remove(_userIdKey);
+  }
+
+  /// ユーザーIDを取得（農家IDとして使用）
+  static Future<String> getUserId() async {
+    // メモリにあればそれを返す
+    if (_userId != null) {
+      return _userId!;
+    }
+
+    // ストレージから読み込み
+    final prefs = await SharedPreferences.getInstance();
+    final storedId = prefs.getString(_userIdKey);
+
+    if (storedId != null) {
+      _userId = storedId;
+      return storedId;
+    }
+
+    // なければセッションIDをユーザーIDとして使用
+    final sessionId = await getSessionId();
+    final userId = 'user_${sessionId.hashCode.abs()}';
+    await setUserId(userId);
+    return userId;
+  }
+
+  /// ユーザーIDを設定
+  static Future<void> setUserId(String userId) async {
+    _userId = userId;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_userIdKey, userId);
   }
 }
