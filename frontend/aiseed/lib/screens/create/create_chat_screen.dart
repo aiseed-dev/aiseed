@@ -25,12 +25,14 @@ class _CreateChatScreenState extends State<CreateChatScreen> {
     super.initState();
     _addAIMessage(
       'こんにちは！🎨\n\n'
-      'どんなWebサイトを作りたいですか？\n\n'
+      '農家・食品店のWebサイト作成をお手伝いします。\n\n'
       '例えば：\n'
-      '• 「自分のポートフォリオを作りたい」\n'
-      '• 「お店のホームページが欲しい」\n'
-      '• 「イベントの告知ページを作りたい」\n\n'
-      'イメージを教えてください！',
+      '• 「野菜の直売所のページを作りたい」\n'
+      '• 「パン屋のホームページが欲しい」\n'
+      '• 「マルシェ出店用のページを作りたい」\n'
+      '• 「QRコードから見れるページが欲しい」\n'
+      '• 「Cloudflareへのデプロイ方法を教えて」\n\n'
+      'お気軽にご相談ください！',
     );
   }
 
@@ -276,29 +278,100 @@ class _CreateChatScreenState extends State<CreateChatScreen> {
   String _getOfflineResponse(String userMessage) {
     final lowerMsg = userMessage.toLowerCase();
 
-    if (lowerMsg.contains('ポートフォリオ')) {
+    // 農家・野菜関連
+    if (lowerMsg.contains('農家') || lowerMsg.contains('野菜') || lowerMsg.contains('農園')) {
+      return '農家さんのサイトですね！🌾\n\n'
+          '素敵です！教えてください：\n\n'
+          '1. どんな野菜を育てていますか？\n'
+          '2. 直売所や配達はしていますか？\n'
+          '3. こだわりのポイントは？（無農薬、有機など）\n\n'
+          '「サイトを作る」画面から、フォーム入力でも作成できます！';
+    }
+    // 直売所
+    else if (lowerMsg.contains('直売') || lowerMsg.contains('産直')) {
+      return '直売所のサイトですね！🏪\n\n'
+          'QRコードから見れるシンプルなページ、いいですね！\n\n'
+          '載せたい情報を教えてください：\n'
+          '• 場所・アクセス\n'
+          '• 営業日・時間\n'
+          '• 取扱商品\n'
+          '• こだわり・特徴';
+    }
+    // パン屋
+    else if (lowerMsg.contains('パン')) {
+      return 'パン屋さんのサイトですね！🍞\n\n'
+          '良いですね！教えてください：\n\n'
+          '1. お店の名前と場所は？\n'
+          '2. おすすめのパンは？\n'
+          '3. 営業日・時間は？\n'
+          '4. こだわり（国産小麦、天然酵母など）は？';
+    }
+    // お菓子・スイーツ
+    else if (lowerMsg.contains('お菓子') || lowerMsg.contains('スイーツ') || lowerMsg.contains('ケーキ')) {
+      return 'お菓子屋さんのサイトですね！🍰\n\n'
+          '素敵です！教えてください：\n\n'
+          '1. どんなお菓子を作っていますか？\n'
+          '2. 店舗はありますか？通販は？\n'
+          '3. こだわりのポイントは？';
+    }
+    // マルシェ
+    else if (lowerMsg.contains('マルシェ') || lowerMsg.contains('市場') || lowerMsg.contains('出店')) {
+      return 'マルシェ出店用のページですね！🎪\n\n'
+          'QRコードを置いて、次回出店情報を案内できますね！\n\n'
+          '教えてください：\n'
+          '• あなた（お店）の紹介\n'
+          '• 主な商品\n'
+          '• SNSアカウント\n'
+          '• 次回の出店予定';
+    }
+    // QRコード
+    else if (lowerMsg.contains('qr') || lowerMsg.contains('キューアール')) {
+      return 'QRコード用のページですね！📱\n\n'
+          'QRコードからアクセスしやすいシンプルなページを作れます。\n\n'
+          '使い方の例：\n'
+          '• 野菜の袋に貼る → 生産者紹介へ\n'
+          '• 店頭POPに表示 → お店情報へ\n'
+          '• 名刺に印刷 → プロフィールへ\n\n'
+          'どんな用途で使いたいですか？';
+    }
+    // Cloudflare・デプロイ
+    else if (lowerMsg.contains('cloudflare') || lowerMsg.contains('デプロイ') || lowerMsg.contains('公開')) {
+      return 'Cloudflare Pagesでの公開ですね！☁️\n\n'
+          '5分で無料公開できます：\n\n'
+          '1. Cloudflareアカウント作成（無料）\n'
+          '2. Pages → Create project\n'
+          '3. Direct Upload を選択\n'
+          '4. HTMLファイルをアップロード\n'
+          '5. 完了！ your-site.pages.dev で公開\n\n'
+          '詳しくは「Cloudflareで公開」画面をご覧ください！';
+    }
+    // お店一般
+    else if (lowerMsg.contains('お店') || lowerMsg.contains('店舗') || lowerMsg.contains('ホームページ')) {
+      return 'お店のホームページですね！🏪\n\n'
+          '良いですね！教えてください：\n\n'
+          '1. どんなお店ですか？\n'
+          '2. 営業時間やアクセス情報は必要？\n'
+          '3. メニューや商品一覧は載せたい？\n\n'
+          '「サイトを作る」画面から、フォーム入力でも作成できます！';
+    }
+    // ポートフォリオ
+    else if (lowerMsg.contains('ポートフォリオ')) {
       return 'ポートフォリオサイトですね！✨\n\n'
           '素敵です！いくつか質問させてください：\n\n'
           '1. どんなお仕事や作品を載せたいですか？\n'
           '2. シンプル or カラフル どちらがお好み？\n'
           '3. 連絡フォームは必要ですか？';
-    } else if (lowerMsg.contains('お店') || lowerMsg.contains('店舗')) {
-      return 'お店のホームページですね！🏪\n\n'
-          '良いですね！教えてください：\n\n'
-          '1. どんなお店ですか？\n'
-          '2. 営業時間やアクセス情報は必要？\n'
-          '3. メニューや商品一覧は載せたい？';
-    } else if (lowerMsg.contains('ブログ')) {
-      return 'ブログサイトですね！📝\n\n'
-          'いいですね！どんなテーマで書きたいですか？\n\n'
-          '• 日記・ライフスタイル\n'
-          '• 技術・専門知識\n'
-          '• 趣味・レビュー';
-    } else {
+    }
+    // その他
+    else {
       return 'なるほど！😊\n\n'
-          'もう少し具体的に教えてもらえますか？\n'
-          '• 誰に見てほしいサイト？\n'
-          '• どんな情報を載せたい？';
+          'もう少し具体的に教えてもらえますか？\n\n'
+          '例えば：\n'
+          '• 農家・直売所のサイト\n'
+          '• パン屋・お菓子屋のサイト\n'
+          '• マルシェ出店用のページ\n'
+          '• QRコードから見れるページ\n\n'
+          'どんなサイトを作りたいですか？';
     }
   }
 }
