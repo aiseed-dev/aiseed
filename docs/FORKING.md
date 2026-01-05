@@ -6,6 +6,43 @@
 
 ---
 
+## 開発フロー
+
+```
+┌─────────────────────────────────────────────────┐
+│                    開発版                        │
+├─────────────────────────────────────────────────┤
+│  1. AIでシナリオ開発                             │
+│     └─ Claude Max でフル機能を実装               │
+│                                                  │
+│  2. パターン抽出                                 │
+│     └─ evaluation/patterns.py                   │
+│     └─ 入出力からテンプレート生成                │
+│                                                  │
+│  3. ルールベース実装                             │
+│     └─ AIと並行して開発                         │
+│     └─ 比較・評価                               │
+│                                                  │
+│  4. AIテスター評価                               │
+│     └─ evaluation/tester.py                     │
+│     └─ 様々なペルソナでテスト                    │
+│     └─ 改善点抽出                               │
+│                                                  │
+│  5. 繰り返し改善                                 │
+└─────────────────────────────────────────────────┘
+          ↓ フォーク
+┌─────────────────────────────────────────────────┐
+│                    公開版                        │
+├─────────────────────────────────────────────────┤
+│  - AI使用箇所を置き換え                          │
+│  - 生成済みテンプレートを使用                     │
+│  - ルールベース実装を採用                        │
+│  - BYOA で高度な機能を提供                       │
+└─────────────────────────────────────────────────┘
+```
+
+---
+
 ## AI使用箇所一覧
 
 ### 高コスト（要置き換え）
@@ -134,6 +171,75 @@ templates/
 
 ---
 
+## 評価モジュール（開発版専用）
+
+`evaluation/` モジュールを使って、ルールベース実装を開発・評価します。
+
+### ResponseComparer: AI vs ルールベース比較
+
+```python
+from evaluation import ResponseComparer
+
+comparer = ResponseComparer()
+
+# 両方を実行して比較
+result = await comparer.compare(
+    input_data={"message": "トマト100円"},
+    ai_handler=ai_parse,
+    rule_handler=rule_parse
+)
+
+print(f"一致度: {result.match_score}")
+print(f"AI時間: {result.ai_time_ms}ms")
+print(f"ルール時間: {result.rule_time_ms}ms")
+```
+
+### AITester: ペルソナテスト
+
+```python
+from evaluation import AITester
+
+tester = AITester(ai_query=agent.chat)
+
+# 様々なペルソナでテストケース生成
+cases = await tester.generate_test_cases(
+    feature="shipment_parsing",
+    personas=["farmer_elderly", "shop_owner_busy"]
+)
+
+# ルールベース実装をテスト
+results = await tester.run_tests(cases, rule_parser)
+
+# 改善点を抽出
+improvements = tester.extract_improvements(results)
+print(improvements["common_issues"])
+```
+
+### PatternExtractor: テンプレート生成
+
+```python
+from evaluation import PatternExtractor
+
+extractor = PatternExtractor(ai_query=agent.chat)
+
+# AIで多様なサンプルを生成
+samples = await extractor.generate_samples(
+    feature="feedback_text",
+    count=50
+)
+
+# パターンを抽出
+patterns = await extractor.extract_patterns(samples)
+
+# テンプレートとして保存
+extractor.save_as_templates("templates/feedback.json")
+
+# ルールベース実装のコードを生成
+code = extractor.generate_rule_code("feedback")
+```
+
+---
+
 ## ファイル構造
 
 ```
@@ -142,6 +248,10 @@ backend/aiseed/
 │   ├── core.py         # AIseedAgent（AI会話）
 │   ├── prompts.py      # プロンプト定義
 │   └── tools/          # ツール群
+├── evaluation/         # ← 開発版専用（公開版では不要）
+│   ├── compare.py      # AI vs ルールベース比較
+│   ├── tester.py       # AIテスター
+│   └── patterns.py     # パターン抽出
 ├── shipment/           # ← 低コスト（そのまま使用可）
 │   ├── service.py
 │   └── parser.py       # ルールベースパーサー
