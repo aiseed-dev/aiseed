@@ -37,6 +37,11 @@ from community.models import (
     Favorite, CheckIn, NotificationSettings,
     FavoriteRequest, CheckInRequest, NotificationSettingsRequest
 )
+from grow import GrowService
+from grow.models import (
+    Plant, Observation, PlantStats,
+    PlantCreateRequest, ObservationCreateRequest
+)
 
 # ==================== 設定 ====================
 class Settings(BaseSettings):
@@ -66,6 +71,7 @@ agent: Optional[AIseedAgent] = None
 spark_experience: Optional[SparkExperience] = None
 shipment_service: Optional[ShipmentService] = None
 community_service: Optional[CommunityService] = None
+grow_service: Optional[GrowService] = None
 
 # ==================== データベース ====================
 async def init_db():
@@ -95,7 +101,7 @@ async def close_db():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """アプリケーションライフサイクル管理"""
-    global agent, spark_experience, shipment_service, community_service
+    global agent, spark_experience, shipment_service, community_service, grow_service
 
     await init_db()
 
@@ -114,6 +120,10 @@ async def lifespan(app: FastAPI):
     # コミュニティサービスの初期化
     community_service = CommunityService(base_path="community_data")
     logger.info("Community Service 初期化完了")
+
+    # 栽培記録サービスの初期化
+    grow_service = GrowService(base_path="grow_data")
+    logger.info("Grow Service 初期化完了")
 
     logger.info("AIseed API Server 起動")
     yield
@@ -828,6 +838,154 @@ async def get_checkin_page(farmer_id: str, farmer_name: str = ""):
     global community_service
 
     html = community_service.generate_checkin_page(farmer_id, farmer_name)
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse(content=html)
+
+
+# ==================== 栽培記録 ====================
+# [AI-USAGE: NONE] ルールベース実装、AI不使用
+@app.post("/internal/grow/plant")
+async def create_plant(request: PlantCreateRequest):
+    """植物を登録"""
+    global grow_service
+
+    logger.info(f"[Grow] CREATE_PLANT user={request.user_id} name={request.name}")
+
+    plant = grow_service.create_plant(
+        user_id=request.user_id,
+        name=request.name,
+        variety=request.variety,
+        location=request.location,
+        notes=request.notes
+    )
+
+    return {
+        "status": "created",
+        "plant": plant.model_dump()
+    }
+
+
+@app.get("/internal/grow/plant/{user_id}")
+async def get_plants(user_id: str):
+    """ユーザーの植物一覧を取得"""
+    global grow_service
+
+    plants = grow_service.get_plants(user_id)
+    return {
+        "status": "ok",
+        "plants": [p.model_dump() for p in plants]
+    }
+
+
+@app.get("/internal/grow/plant/{user_id}/{plant_id}")
+async def get_plant(user_id: str, plant_id: str):
+    """植物を取得"""
+    global grow_service
+
+    plant = grow_service.get_plant(user_id, plant_id)
+    if not plant:
+        return {"status": "not_found", "plant": None}
+
+    return {
+        "status": "ok",
+        "plant": plant.model_dump()
+    }
+
+
+@app.delete("/internal/grow/plant/{user_id}/{plant_id}")
+async def delete_plant(user_id: str, plant_id: str):
+    """植物を削除"""
+    global grow_service
+
+    success = grow_service.delete_plant(user_id, plant_id)
+    if success:
+        return {"status": "deleted"}
+    return {"status": "not_found"}
+
+
+@app.post("/internal/grow/observation")
+async def add_observation(request: ObservationCreateRequest):
+    """観察記録を追加"""
+    global grow_service
+
+    logger.info(f"[Grow] ADD_OBS plant={request.plant_id} user={request.user_id}")
+
+    observation = grow_service.add_observation(
+        plant_id=request.plant_id,
+        user_id=request.user_id,
+        text=request.text,
+        date=request.date,
+        time=request.time,
+        weather=request.weather,
+        temperature=request.temperature,
+        watered=request.watered,
+        fertilized=request.fertilized,
+        harvested=request.harvested,
+        harvest_amount=request.harvest_amount,
+        photo_urls=request.photo_urls
+    )
+
+    return {
+        "status": "added",
+        "observation": observation.model_dump()
+    }
+
+
+@app.get("/internal/grow/observation/{user_id}/{plant_id}")
+async def get_observations(user_id: str, plant_id: str, limit: int = 30, offset: int = 0):
+    """観察記録を取得"""
+    global grow_service
+
+    observations = grow_service.get_observations(user_id, plant_id, limit=limit, offset=offset)
+    return {
+        "status": "ok",
+        "observations": [o.model_dump() for o in observations]
+    }
+
+
+@app.get("/internal/grow/observation/{user_id}/today")
+async def get_today_observations(user_id: str):
+    """今日の観察記録を取得"""
+    global grow_service
+
+    observations = grow_service.get_today_observations(user_id)
+    return {
+        "status": "ok",
+        "date": datetime.now().strftime("%Y-%m-%d"),
+        "observations": [o.model_dump() for o in observations]
+    }
+
+
+@app.get("/internal/grow/stats/{user_id}/{plant_id}")
+async def get_plant_stats(user_id: str, plant_id: str):
+    """植物の統計を取得"""
+    global grow_service
+
+    stats = grow_service.get_plant_stats(user_id, plant_id)
+    return {
+        "status": "ok",
+        "stats": stats.model_dump()
+    }
+
+
+@app.get("/internal/grow/stats/{user_id}")
+async def get_user_grow_stats(user_id: str):
+    """ユーザーの栽培統計を取得"""
+    global grow_service
+
+    stats = grow_service.get_user_stats(user_id)
+    return {
+        "status": "ok",
+        "stats": stats
+    }
+
+
+@app.get("/internal/grow/plant/{user_id}/{plant_id}/page")
+async def get_plant_page(user_id: str, plant_id: str):
+    """植物の公開ページを取得"""
+    global grow_service
+
+    html = grow_service.generate_plant_page(user_id, plant_id)
     from fastapi.responses import HTMLResponse
     return HTMLResponse(content=html)
 
