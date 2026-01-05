@@ -188,6 +188,9 @@ async def save_conversation(
         logger.error(f"会話履歴保存エラー: {e}")
 
 # ==================== 会話処理 ====================
+# [AI-USAGE: HIGH] この関数はAIを使用します
+# 公開版では BYOA または テンプレート に置き換えてください
+# 詳細: docs/FORKING.md
 async def handle_conversation(service: str, request: ConversationRequest) -> ConversationResponse:
     """会話処理（エージェントを使用）"""
     global agent
@@ -196,7 +199,7 @@ async def handle_conversation(service: str, request: ConversationRequest) -> Con
     user_id = request.user_id or request.session_id or "anonymous"
 
     try:
-        # エージェントで会話を処理
+        # [AI-CALL] エージェントで会話を処理
         response_text = await agent.chat(
             service=service,
             user_message=request.user_message,
@@ -431,6 +434,9 @@ async def get_skill(user_id: str, skill_type: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==================== 分析 ====================
+# [AI-USAGE: HIGH] この関数はAIを使用します
+# 公開版では ルールベース に置き換えてください
+# 詳細: docs/FORKING.md
 @app.post("/internal/analyze", response_model=StrengthAnalysis)
 async def analyze_strengths(conversation_history: list[dict]):
     """強み分析（レガシー互換）"""
@@ -485,6 +491,9 @@ JSON形式で出力:
         logger.error(f"分析エラー: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# [AI-USAGE: HIGH] この関数はAIを使用します
+# 公開版では ルールベース に置き換えてください
+# 詳細: docs/FORKING.md
 @app.post("/internal/conversation/analyze")
 async def analyze_conversation(
     user_id: str,
@@ -496,6 +505,7 @@ async def analyze_conversation(
     global agent
 
     try:
+        # [AI-CALL] 会話分析
         result = await agent.analyze_conversation(
             user_id=user_id,
             session_id=session_id,
@@ -508,6 +518,9 @@ async def analyze_conversation(
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==================== 出荷情報 ====================
+# [AI-USAGE: MEDIUM] ルールベースで解析失敗時のみAIを使用
+# 公開版では 構造化入力のみ に限定してください
+# 詳細: docs/FORKING.md
 @app.post("/internal/shipment/post")
 async def post_shipment_natural(request: ShipmentPostRequest):
     """
@@ -519,12 +532,13 @@ async def post_shipment_natural(request: ShipmentPostRequest):
 
     logger.info(f"[Shipment] POST natural: farmer={request.farmer_id} msg={request.message[:50]}...")
 
-    # パーサーで解析
+    # パーサーで解析（ルールベース - AI不使用）
     parser = ShipmentParser()
     shipment = parser.parse(request.farmer_id, request.message)
 
     if not shipment:
-        # AIで再解析を試みる
+        # [AI-CALL] ルールベースで失敗した場合のみAIで再解析
+        # 公開版ではこのブロックを削除し、エラーを返す
         async def ai_query(prompt):
             response = await agent.chat(
                 service="create",
