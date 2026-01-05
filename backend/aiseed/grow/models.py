@@ -82,3 +82,25 @@ class ObservationCreateRequest(BaseModel):
     harvested: bool = False
     harvest_amount: Optional[str] = None
     photo_urls: list[str] = []
+
+
+# ==================== AI分析リクエストモデル ====================
+
+class GrowthAnalysisRequest(BaseModel):
+    """成長分析リクエスト"""
+    user_id: str
+    plant_id: str
+    recent_days: int = 7
+
+
+class ProblemDiagnosisRequest(BaseModel):
+    """問題診断リクエスト"""
+    user_id: str
+    plant_id: str
+    problem_description: str  # 問題の説明
+
+
+class HarvestPredictionRequest(BaseModel):
+    """収穫予測リクエスト"""
+    user_id: str
+    plant_id: str
