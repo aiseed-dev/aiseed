@@ -32,6 +32,11 @@ from shipment.models import (
     SubscribeRequest, NotificationResult
 )
 from shipment.parser import ShipmentParser, parse_with_ai
+from community import CommunityService
+from community.models import (
+    Favorite, CheckIn, NotificationSettings,
+    FavoriteRequest, CheckInRequest, NotificationSettingsRequest
+)
 
 # ==================== 設定 ====================
 class Settings(BaseSettings):
@@ -60,6 +65,7 @@ db_pool: Optional[asyncpg.Pool] = None
 agent: Optional[AIseedAgent] = None
 spark_experience: Optional[SparkExperience] = None
 shipment_service: Optional[ShipmentService] = None
+community_service: Optional[CommunityService] = None
 
 # ==================== データベース ====================
 async def init_db():
@@ -89,7 +95,7 @@ async def close_db():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """アプリケーションライフサイクル管理"""
-    global agent, spark_experience, shipment_service
+    global agent, spark_experience, shipment_service, community_service
 
     await init_db()
 
@@ -104,6 +110,10 @@ async def lifespan(app: FastAPI):
     # 出荷情報サービスの初期化
     shipment_service = ShipmentService(base_path="shipment_data")
     logger.info("Shipment Service 初期化完了")
+
+    # コミュニティサービスの初期化
+    community_service = CommunityService(base_path="community_data")
+    logger.info("Community Service 初期化完了")
 
     logger.info("AIseed API Server 起動")
     yield
@@ -178,6 +188,9 @@ async def save_conversation(
         logger.error(f"会話履歴保存エラー: {e}")
 
 # ==================== 会話処理 ====================
+# [AI-USAGE: HIGH] この関数はAIを使用します
+# 公開版では BYOA または テンプレート に置き換えてください
+# 詳細: docs/FORKING.md
 async def handle_conversation(service: str, request: ConversationRequest) -> ConversationResponse:
     """会話処理（エージェントを使用）"""
     global agent
@@ -186,7 +199,7 @@ async def handle_conversation(service: str, request: ConversationRequest) -> Con
     user_id = request.user_id or request.session_id or "anonymous"
 
     try:
-        # エージェントで会話を処理
+        # [AI-CALL] エージェントで会話を処理
         response_text = await agent.chat(
             service=service,
             user_message=request.user_message,
@@ -421,6 +434,9 @@ async def get_skill(user_id: str, skill_type: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==================== 分析 ====================
+# [AI-USAGE: HIGH] この関数はAIを使用します
+# 公開版では ルールベース に置き換えてください
+# 詳細: docs/FORKING.md
 @app.post("/internal/analyze", response_model=StrengthAnalysis)
 async def analyze_strengths(conversation_history: list[dict]):
     """強み分析（レガシー互換）"""
@@ -475,6 +491,9 @@ JSON形式で出力:
         logger.error(f"分析エラー: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# [AI-USAGE: HIGH] この関数はAIを使用します
+# 公開版では ルールベース に置き換えてください
+# 詳細: docs/FORKING.md
 @app.post("/internal/conversation/analyze")
 async def analyze_conversation(
     user_id: str,
@@ -486,6 +505,7 @@ async def analyze_conversation(
     global agent
 
     try:
+        # [AI-CALL] 会話分析
         result = await agent.analyze_conversation(
             user_id=user_id,
             session_id=session_id,
@@ -498,6 +518,9 @@ async def analyze_conversation(
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==================== 出荷情報 ====================
+# [AI-USAGE: MEDIUM] ルールベースで解析失敗時のみAIを使用
+# 公開版では 構造化入力のみ に限定してください
+# 詳細: docs/FORKING.md
 @app.post("/internal/shipment/post")
 async def post_shipment_natural(request: ShipmentPostRequest):
     """
@@ -509,12 +532,13 @@ async def post_shipment_natural(request: ShipmentPostRequest):
 
     logger.info(f"[Shipment] POST natural: farmer={request.farmer_id} msg={request.message[:50]}...")
 
-    # パーサーで解析
+    # パーサーで解析（ルールベース - AI不使用）
     parser = ShipmentParser()
     shipment = parser.parse(request.farmer_id, request.message)
 
     if not shipment:
-        # AIで再解析を試みる
+        # [AI-CALL] ルールベースで失敗した場合のみAIで再解析
+        # 公開版ではこのブロックを削除し、エラーを返す
         async def ai_query(prompt):
             response = await agent.chat(
                 service="create",
@@ -658,6 +682,154 @@ async def get_subscriber_count(farmer_id: str):
 
     subscribers = shipment_service.get_subscribers(farmer_id)
     return {"count": len(subscribers)}
+
+
+# ==================== コミュニティ ====================
+@app.post("/internal/favorite")
+async def add_favorite(request: FavoriteRequest):
+    """お気に入り（フォロー）を追加"""
+    global community_service
+
+    logger.info(f"[Community] FAVORITE user={request.user_id} farmer={request.farmer_id}")
+
+    favorite = community_service.add_favorite(
+        user_id=request.user_id,
+        farmer_id=request.farmer_id
+    )
+
+    return {
+        "status": "added",
+        "favorite": favorite.model_dump()
+    }
+
+
+@app.delete("/internal/favorite")
+async def remove_favorite(user_id: str, farmer_id: str):
+    """お気に入り（フォロー）を解除"""
+    global community_service
+
+    logger.info(f"[Community] UNFAVORITE user={user_id} farmer={farmer_id}")
+
+    success = community_service.remove_favorite(user_id, farmer_id)
+    if success:
+        return {"status": "removed"}
+    return {"status": "not_found"}
+
+
+@app.get("/internal/favorite/{user_id}")
+async def get_favorites(user_id: str):
+    """ユーザーのお気に入りリストを取得"""
+    global community_service
+
+    favorites = community_service.get_user_favorites(user_id)
+    return {
+        "status": "ok",
+        "favorites": [f.model_dump() for f in favorites]
+    }
+
+
+@app.get("/internal/favorite/{farmer_id}/followers")
+async def get_farmer_followers(farmer_id: str):
+    """農家のフォロワーリストを取得"""
+    global community_service
+
+    followers = community_service.get_farmer_followers(farmer_id)
+    return {
+        "status": "ok",
+        "followers": [f.model_dump() for f in followers],
+        "count": len(followers)
+    }
+
+
+@app.post("/internal/checkin")
+async def check_in(request: CheckInRequest):
+    """来店記録（QRスキャン）"""
+    global community_service
+
+    logger.info(f"[Community] CHECKIN user={request.user_id} farmer={request.farmer_id}")
+
+    checkin = community_service.check_in(
+        user_id=request.user_id,
+        farmer_id=request.farmer_id,
+        location_name=request.location_name
+    )
+
+    return {
+        "status": "checked_in",
+        "checkin": checkin.model_dump(),
+        "message": f"ご来店ありがとうございます！"
+    }
+
+
+@app.get("/internal/checkin/{user_id}/history")
+async def get_checkin_history(user_id: str, limit: int = 20):
+    """来店履歴を取得"""
+    global community_service
+
+    checkins = community_service.get_user_checkins(user_id, limit=limit)
+    return {
+        "status": "ok",
+        "checkins": [c.model_dump() for c in checkins],
+        "count": len(checkins)
+    }
+
+
+@app.get("/internal/farmer/{farmer_id}/stats")
+async def get_farmer_stats(farmer_id: str):
+    """農家の統計情報を取得"""
+    global community_service
+
+    stats = community_service.get_farmer_stats(farmer_id)
+    return {
+        "status": "ok",
+        "stats": stats.model_dump()
+    }
+
+
+@app.post("/internal/notification/settings")
+async def update_notification_settings(request: NotificationSettingsRequest):
+    """通知設定を更新"""
+    global community_service
+
+    logger.info(f"[Community] NOTIFICATION_SETTINGS user={request.user_id}")
+
+    settings = community_service.update_notification_settings(
+        user_id=request.user_id,
+        email_enabled=request.email_enabled,
+        push_enabled=request.push_enabled,
+        email=request.email,
+        push_subscription=request.push_subscription
+    )
+
+    return {
+        "status": "updated",
+        "settings": settings.model_dump()
+    }
+
+
+@app.get("/internal/notification/settings/{user_id}")
+async def get_notification_settings(user_id: str):
+    """通知設定を取得"""
+    global community_service
+
+    settings = community_service.get_notification_settings(user_id)
+    if not settings:
+        return {"status": "not_found", "settings": None}
+
+    return {
+        "status": "ok",
+        "settings": settings.model_dump()
+    }
+
+
+@app.get("/internal/checkin/{farmer_id}/page")
+async def get_checkin_page(farmer_id: str, farmer_name: str = ""):
+    """来店記録用のQRスキャンページを取得"""
+    global community_service
+
+    html = community_service.generate_checkin_page(farmer_id, farmer_name)
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse(content=html)
 
 
 if __name__ == "__main__":
