@@ -857,18 +857,32 @@ async def get_checkin_page(farmer_id: str, farmer_name: str = ""):
 
 # ==================== 栽培記録 ====================
 # [AI-USAGE: NONE] ルールベース実装、AI不使用
+
+@app.get("/internal/grow/farming-methods")
+async def get_farming_methods():
+    """栽培方法の一覧を取得"""
+    global grow_service
+    return {
+        "status": "ok",
+        "methods": grow_service.get_farming_methods()
+    }
+
+
 @app.post("/internal/grow/plant")
 async def create_plant(request: PlantCreateRequest):
     """植物を登録"""
     global grow_service
 
-    logger.info(f"[Grow] CREATE_PLANT user={request.user_id} name={request.name}")
+    logger.info(f"[Grow] CREATE_PLANT user={request.user_id} name={request.name} method={request.farming_method}")
 
     plant = grow_service.create_plant(
         user_id=request.user_id,
         name=request.name,
         variety=request.variety,
         location=request.location,
+        farming_method=request.farming_method,
+        farming_method_sub=request.farming_method_sub,
+        farming_method_notes=request.farming_method_notes,
         notes=request.notes
     )
 

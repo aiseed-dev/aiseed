@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
-from .models import Plant, Observation, PlantStats
+from .models import Plant, Observation, PlantStats, FARMING_METHODS
 
 logger = logging.getLogger("aiseed.grow")
 
@@ -22,6 +22,12 @@ class GrowService:
         self.base_path = Path(base_path)
         self.base_path.mkdir(parents=True, exist_ok=True)
 
+    # ==================== 栽培方法 ====================
+
+    def get_farming_methods(self) -> dict:
+        """栽培方法の一覧を取得"""
+        return FARMING_METHODS
+
     # ==================== 植物管理 ====================
 
     def create_plant(
@@ -30,6 +36,9 @@ class GrowService:
         name: str,
         variety: Optional[str] = None,
         location: Optional[str] = None,
+        farming_method: Optional[str] = "undecided",
+        farming_method_sub: Optional[str] = None,
+        farming_method_notes: Optional[str] = None,
         notes: Optional[str] = None
     ) -> Plant:
         """植物を登録"""
@@ -39,6 +48,9 @@ class GrowService:
             name=name,
             variety=variety,
             location=location,
+            farming_method=farming_method,
+            farming_method_sub=farming_method_sub,
+            farming_method_notes=farming_method_notes,
             notes=notes,
             started_at=datetime.now(),
             created_at=datetime.now(),
