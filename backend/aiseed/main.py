@@ -37,6 +37,12 @@ from community.models import (
     Favorite, CheckIn, NotificationSettings,
     FavoriteRequest, CheckInRequest, NotificationSettingsRequest
 )
+from grow import GrowService, GrowAIService
+from grow.models import (
+    Plant, Observation, PlantStats,
+    PlantCreateRequest, ObservationCreateRequest,
+    GrowthAnalysisRequest, ProblemDiagnosisRequest, HarvestPredictionRequest
+)
 
 # ==================== 設定 ====================
 class Settings(BaseSettings):
@@ -66,6 +72,8 @@ agent: Optional[AIseedAgent] = None
 spark_experience: Optional[SparkExperience] = None
 shipment_service: Optional[ShipmentService] = None
 community_service: Optional[CommunityService] = None
+grow_service: Optional[GrowService] = None
+grow_ai_service: Optional[GrowAIService] = None  # BYOA対応AI分析
 
 # ==================== データベース ====================
 async def init_db():
@@ -95,7 +103,7 @@ async def close_db():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """アプリケーションライフサイクル管理"""
-    global agent, spark_experience, shipment_service, community_service
+    global agent, spark_experience, shipment_service, community_service, grow_service, grow_ai_service
 
     await init_db()
 
@@ -114,6 +122,21 @@ async def lifespan(app: FastAPI):
     # コミュニティサービスの初期化
     community_service = CommunityService(base_path="community_data")
     logger.info("Community Service 初期化完了")
+
+    # 栽培記録サービスの初期化
+    grow_service = GrowService(base_path="grow_data")
+    logger.info("Grow Service 初期化完了")
+
+    # 栽培AI分析サービスの初期化（BYOA: 開発版ではagent.chatを使用）
+    async def ai_query_wrapper(prompt: str) -> str:
+        return await agent.chat(
+            service="grow",
+            user_message=prompt,
+            user_id="system",
+            task_name="grow_analysis"
+        )
+    grow_ai_service = GrowAIService(ai_query=ai_query_wrapper)
+    logger.info("Grow AI Service 初期化完了 (BYOA対応)")
 
     logger.info("AIseed API Server 起動")
     yield
@@ -830,6 +853,340 @@ async def get_checkin_page(farmer_id: str, farmer_name: str = ""):
     html = community_service.generate_checkin_page(farmer_id, farmer_name)
     from fastapi.responses import HTMLResponse
     return HTMLResponse(content=html)
+
+
+# ==================== 栽培記録 ====================
+# [AI-USAGE: NONE] ルールベース実装、AI不使用
+
+@app.get("/internal/grow/farming-methods")
+async def get_farming_methods():
+    """栽培方法の一覧を取得"""
+    global grow_service
+    return {
+        "status": "ok",
+        "methods": grow_service.get_farming_methods()
+    }
+
+
+@app.post("/internal/grow/plant")
+async def create_plant(request: PlantCreateRequest):
+    """植物を登録"""
+    global grow_service
+
+    logger.info(f"[Grow] CREATE_PLANT user={request.user_id} name={request.name} method={request.farming_method}")
+
+    plant = grow_service.create_plant(
+        user_id=request.user_id,
+        name=request.name,
+        variety=request.variety,
+        location=request.location,
+        farming_method=request.farming_method,
+        farming_method_sub=request.farming_method_sub,
+        farming_method_notes=request.farming_method_notes,
+        notes=request.notes
+    )
+
+    return {
+        "status": "created",
+        "plant": plant.model_dump()
+    }
+
+
+@app.get("/internal/grow/plant/{user_id}")
+async def get_plants(user_id: str):
+    """ユーザーの植物一覧を取得"""
+    global grow_service
+
+    plants = grow_service.get_plants(user_id)
+    return {
+        "status": "ok",
+        "plants": [p.model_dump() for p in plants]
+    }
+
+
+@app.get("/internal/grow/plant/{user_id}/{plant_id}")
+async def get_plant(user_id: str, plant_id: str):
+    """植物を取得"""
+    global grow_service
+
+    plant = grow_service.get_plant(user_id, plant_id)
+    if not plant:
+        return {"status": "not_found", "plant": None}
+
+    return {
+        "status": "ok",
+        "plant": plant.model_dump()
+    }
+
+
+@app.delete("/internal/grow/plant/{user_id}/{plant_id}")
+async def delete_plant(user_id: str, plant_id: str):
+    """植物を削除"""
+    global grow_service
+
+    success = grow_service.delete_plant(user_id, plant_id)
+    if success:
+        return {"status": "deleted"}
+    return {"status": "not_found"}
+
+
+@app.post("/internal/grow/observation")
+async def add_observation(request: ObservationCreateRequest):
+    """観察記録を追加"""
+    global grow_service
+
+    logger.info(f"[Grow] ADD_OBS plant={request.plant_id} user={request.user_id}")
+
+    observation = grow_service.add_observation(
+        plant_id=request.plant_id,
+        user_id=request.user_id,
+        text=request.text,
+        date=request.date,
+        time=request.time,
+        weather=request.weather,
+        temperature=request.temperature,
+        watered=request.watered,
+        fertilized=request.fertilized,
+        harvested=request.harvested,
+        harvest_amount=request.harvest_amount,
+        photo_urls=request.photo_urls
+    )
+
+    return {
+        "status": "added",
+        "observation": observation.model_dump()
+    }
+
+
+@app.get("/internal/grow/observation/{user_id}/{plant_id}")
+async def get_observations(user_id: str, plant_id: str, limit: int = 30, offset: int = 0):
+    """観察記録を取得"""
+    global grow_service
+
+    observations = grow_service.get_observations(user_id, plant_id, limit=limit, offset=offset)
+    return {
+        "status": "ok",
+        "observations": [o.model_dump() for o in observations]
+    }
+
+
+@app.get("/internal/grow/observation/{user_id}/today")
+async def get_today_observations(user_id: str):
+    """今日の観察記録を取得"""
+    global grow_service
+
+    observations = grow_service.get_today_observations(user_id)
+    return {
+        "status": "ok",
+        "date": datetime.now().strftime("%Y-%m-%d"),
+        "observations": [o.model_dump() for o in observations]
+    }
+
+
+@app.get("/internal/grow/stats/{user_id}/{plant_id}")
+async def get_plant_stats(user_id: str, plant_id: str):
+    """植物の統計を取得"""
+    global grow_service
+
+    stats = grow_service.get_plant_stats(user_id, plant_id)
+    return {
+        "status": "ok",
+        "stats": stats.model_dump()
+    }
+
+
+@app.get("/internal/grow/stats/{user_id}")
+async def get_user_grow_stats(user_id: str):
+    """ユーザーの栽培統計を取得"""
+    global grow_service
+
+    stats = grow_service.get_user_stats(user_id)
+    return {
+        "status": "ok",
+        "stats": stats
+    }
+
+
+@app.get("/internal/grow/plant/{user_id}/{plant_id}/page")
+async def get_plant_page(user_id: str, plant_id: str):
+    """植物の公開ページを取得"""
+    global grow_service
+
+    html = grow_service.generate_plant_page(user_id, plant_id)
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse(content=html)
+
+
+# ==================== 栽培AI分析（BYOA対応） ====================
+# [AI-USAGE: BYOA] ユーザーのAIを使用
+# 開発版: 運営のAI（agent.chat）
+# 公開版: ユーザーのAPIキー
+@app.post("/internal/grow/ai/analyze")
+async def analyze_growth(request: GrowthAnalysisRequest):
+    """
+    成長を総合分析（AI使用）
+
+    開発版: 運営のAIで分析
+    公開版: BYOA（ユーザーのAPIキー）
+    """
+    global grow_service, grow_ai_service
+
+    logger.info(f"[Grow/AI] ANALYZE user={request.user_id} plant={request.plant_id}")
+
+    plant = grow_service.get_plant(request.user_id, request.plant_id)
+    if not plant:
+        raise HTTPException(status_code=404, detail="植物が見つかりません")
+
+    observations = grow_service.get_observations(
+        request.user_id,
+        request.plant_id,
+        limit=request.recent_days
+    )
+
+    analysis = await grow_ai_service.analyze_growth(
+        plant=plant,
+        observations=observations,
+        recent_days=request.recent_days
+    )
+
+    return {
+        "status": "ok",
+        "analysis": {
+            "summary": analysis.summary,
+            "health_score": analysis.health_score,
+            "growth_stage": analysis.growth_stage,
+            "insights": analysis.insights,
+            "concerns": analysis.concerns,
+            "recommendations": analysis.recommendations,
+            "next_actions": analysis.next_actions
+        }
+    }
+
+
+@app.post("/internal/grow/ai/diagnose")
+async def diagnose_problem(request: ProblemDiagnosisRequest):
+    """
+    問題を診断（AI使用）
+
+    葉が黄色い、虫がついた等の問題を診断
+    """
+    global grow_service, grow_ai_service
+
+    logger.info(f"[Grow/AI] DIAGNOSE user={request.user_id} plant={request.plant_id}")
+
+    plant = grow_service.get_plant(request.user_id, request.plant_id)
+    if not plant:
+        raise HTTPException(status_code=404, detail="植物が見つかりません")
+
+    observations = grow_service.get_observations(
+        request.user_id,
+        request.plant_id,
+        limit=5
+    )
+
+    diagnosis = await grow_ai_service.diagnose_problem(
+        plant=plant,
+        problem_description=request.problem_description,
+        observations=observations
+    )
+
+    return {
+        "status": "ok",
+        "diagnosis": {
+            "problem_type": diagnosis.problem_type,
+            "confidence": diagnosis.confidence,
+            "description": diagnosis.description,
+            "possible_causes": diagnosis.possible_causes,
+            "solutions": diagnosis.solutions,
+            "urgency": diagnosis.urgency
+        }
+    }
+
+
+@app.post("/internal/grow/ai/predict-harvest")
+async def predict_harvest(request: HarvestPredictionRequest):
+    """
+    収穫時期を予測（AI使用）
+    """
+    global grow_service, grow_ai_service
+
+    logger.info(f"[Grow/AI] PREDICT user={request.user_id} plant={request.plant_id}")
+
+    plant = grow_service.get_plant(request.user_id, request.plant_id)
+    if not plant:
+        raise HTTPException(status_code=404, detail="植物が見つかりません")
+
+    observations = grow_service.get_observations(
+        request.user_id,
+        request.plant_id,
+        limit=20
+    )
+
+    prediction = await grow_ai_service.predict_harvest(
+        plant=plant,
+        observations=observations
+    )
+
+    return {
+        "status": "ok",
+        "prediction": {
+            "estimated_date": prediction.estimated_date,
+            "confidence": prediction.confidence,
+            "conditions": prediction.conditions,
+            "tips": prediction.tips
+        }
+    }
+
+
+@app.get("/internal/grow/ai/prompt/{user_id}/{plant_id}")
+async def get_observation_prompt(user_id: str, plant_id: str):
+    """
+    観察の促しメッセージを取得（AI使用）
+
+    パーソナライズされた観察の促し
+    """
+    global grow_service, grow_ai_service
+
+    plant = grow_service.get_plant(user_id, plant_id)
+    if not plant:
+        raise HTTPException(status_code=404, detail="植物が見つかりません")
+
+    observations = grow_service.get_observations(user_id, plant_id, limit=1)
+    last_obs = observations[0] if observations else None
+
+    prompt = await grow_ai_service.generate_observation_prompt(
+        plant=plant,
+        last_observation=last_obs
+    )
+
+    return {
+        "status": "ok",
+        "prompt": prompt
+    }
+
+
+@app.post("/internal/grow/ai/insights")
+async def extract_insights_ai(user_id: str, plant_id: str, observation_text: str):
+    """
+    観察テキストから気づきを抽出（AI使用）
+
+    ルールベースより深い気づきを抽出
+    """
+    global grow_service, grow_ai_service
+
+    plant = grow_service.get_plant(user_id, plant_id)
+    if not plant:
+        raise HTTPException(status_code=404, detail="植物が見つかりません")
+
+    insights = await grow_ai_service.extract_insights(
+        observation_text=observation_text,
+        plant=plant
+    )
+
+    return {
+        "status": "ok",
+        "insights": insights
+    }
 
 
 if __name__ == "__main__":
