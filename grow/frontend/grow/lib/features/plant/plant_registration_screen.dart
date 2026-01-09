@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../shared/theme/colors.dart';
 import '../../shared/models/models.dart';
+import '../../shared/data/ai_research_prompts.dart';
+import '../ai_research/widgets/ai_research_hint.dart';
 import 'widgets/farming_method_selector.dart';
 import 'widgets/soil_type_selector.dart';
 
@@ -51,6 +53,17 @@ class _PlantRegistrationScreenState extends State<PlantRegistrationScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            // AIリサーチバナー
+            AIResearchBanner(
+              title: 'AIで栽培情報を調べる',
+              subtitle: '土壌や育て方をAIで調べてみましょう',
+              initialValues: {
+                'plant': _nameController.text,
+                'location': _locationController.text,
+              },
+            ),
+            const SizedBox(height: 24),
+
             // 植物名（必須）
             _buildSectionTitle('植物名', required: true),
             const SizedBox(height: 8),
@@ -106,6 +119,14 @@ class _PlantRegistrationScreenState extends State<PlantRegistrationScreen> {
             // 土壌（任意）
             _buildSectionTitle('土壌'),
             const SizedBox(height: 8),
+            AIResearchHint(
+              hintText: 'わからない場合はAIで調べる',
+              category: ResearchCategory.soil,
+              initialValues: {
+                'location': _locationController.text,
+              },
+            ),
+            const SizedBox(height: 12),
             SoilTypeSelector(
               selectedSoilType: _selectedSoilType,
               onChanged: (soilType) {
