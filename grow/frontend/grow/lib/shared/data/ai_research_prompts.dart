@@ -588,6 +588,169 @@ Notes:
 ''',
     placeholders: ['location', 'environment', 'sunlight', 'wind'],
   );
+
+  /// 地域の気候を総合的に調べる
+  static const comprehensive = ResearchPrompt(
+    id: 'climate_comprehensive',
+    category: ResearchCategory.climate,
+    titleJa: '地域の気候を調べる',
+    titleEn: 'Research Local Climate',
+    descriptionJa: '栽培に必要な気候情報を総合的に調べます',
+    descriptionEn: 'Comprehensive climate information for growing',
+    promptTemplateJa: '''
+{location}で家庭菜園・自然農法をしています。
+
+この地域の気候について、以下を教えてください：
+
+【1. 気候の基本情報】
+- 気候区分（ケッペン分類や日本の気候区分）
+- 年間平均気温、最高・最低気温
+- 年間降水量と降雨パターン
+
+【2. 栽培カレンダーの目安】
+- 最終霜日・初霜日の目安
+- 栽培可能期間（霜なし期間）
+- 梅雨の時期と特徴
+- 台風シーズン
+
+【3. 季節ごとの特徴】
+- 春：遅霜リスク、植え付け開始時期
+- 夏：猛暑日、水やりの注意点
+- 秋：収穫適期、秋まきの時期
+- 冬：寒さ対策、越冬できる野菜
+
+【4. 自然農法での気候活用】
+- この気候に適した野菜・作物
+- 季節の変化を活かした栽培のコツ
+- 気候の課題と自然な対策
+''',
+    promptTemplateEn: '''
+I'm doing home gardening/natural farming in {location}.
+
+Please tell me about the climate in this area:
+
+【1. Basic Climate Information】
+- Climate classification (Köppen or regional)
+- Annual average, max, and min temperatures
+- Annual precipitation and rainfall patterns
+
+【2. Growing Calendar Guidelines】
+- Last frost date / First frost date
+- Growing season length (frost-free period)
+- Rainy season timing and characteristics
+- Typhoon/storm season
+
+【3. Seasonal Characteristics】
+- Spring: Late frost risks, planting start
+- Summer: Heat waves, watering needs
+- Fall: Harvest timing, fall planting window
+- Winter: Cold protection, overwintering crops
+
+【4. Natural Farming in This Climate】
+- Vegetables/crops suited to this climate
+- Tips for working with seasonal changes
+- Climate challenges and natural solutions
+''',
+    exampleInputJa: '神奈川県横浜市',
+    exampleInputEn: 'Yokohama, Kanagawa, Japan',
+    exampleOutputJa: '''
+【神奈川県横浜市の気候】
+
+■ 1. 基本情報
+気候区分：温暖湿潤気候（Cfa）
+年間平均気温：約16℃
+最高気温：35℃前後（8月）
+最低気温：2℃前後（1月）
+年間降水量：約1,600mm
+
+■ 2. 栽培カレンダー
+最終霜日：4月上旬
+初霜日：11月下旬
+栽培可能期間：約230日
+梅雨：6月上旬〜7月中旬（約40日）
+台風：8月〜10月
+
+■ 3. 季節の特徴
+【春】3-5月
+- 4月上旬まで遅霜注意
+- GW頃から夏野菜定植OK
+- 寒暖差が大きい
+
+【夏】6-8月
+- 梅雨時は病気に注意
+- 7-8月は猛暑、朝夕の水やり
+- 台風対策（支柱補強）
+
+【秋】9-11月
+- 9月は残暑、秋まき開始
+- 10-11月は収穫最盛期
+- 11月下旬から霜対策
+
+【冬】12-2月
+- 霜よけ・トンネル必要
+- ホウレンソウ、小松菜は越冬可能
+- 2月後半から春の準備
+
+■ 4. 自然農法での活用
+適した野菜：トマト、ナス、キュウリ、大根、白菜
+コツ：
+- 梅雨前にマルチで泥はね防止
+- 夏は草マルチで地温抑制
+- 台風前は早めに収穫
+課題と対策：
+- 多湿→風通し確保、株間を広く
+- 猛暑→遮光ネット、敷き藁
+''',
+    exampleOutputEn: '''
+【Climate of Yokohama, Kanagawa】
+
+■ 1. Basic Information
+Classification: Humid subtropical (Cfa)
+Annual average: ~16°C
+Max temp: ~35°C (August)
+Min temp: ~2°C (January)
+Annual rainfall: ~1,600mm
+
+■ 2. Growing Calendar
+Last frost: Early April
+First frost: Late November
+Growing season: ~230 days
+Rainy season: Early June - Mid July (~40 days)
+Typhoons: August - October
+
+■ 3. Seasonal Characteristics
+【Spring】Mar-May
+- Watch for late frost until early April
+- Summer crops transplant after Golden Week
+- Large temperature swings
+
+【Summer】Jun-Aug
+- Disease risk during rainy season
+- Hot in Jul-Aug, water morning/evening
+- Typhoon prep (stake reinforcement)
+
+【Fall】Sep-Nov
+- Lingering heat in Sep, start fall sowing
+- Oct-Nov peak harvest season
+- Frost protection from late November
+
+【Winter】Dec-Feb
+- Frost covers/tunnels needed
+- Spinach, komatsuna can overwinter
+- Start spring prep in late February
+
+■ 4. Natural Farming Tips
+Suitable crops: Tomato, eggplant, cucumber, daikon, napa cabbage
+Tips:
+- Mulch before rainy season to prevent splash
+- Grass mulch in summer to cool soil
+- Harvest early before typhoons
+Challenges & solutions:
+- Humidity → ensure airflow, wide spacing
+- Heat → shade cloth, straw mulch
+''',
+    placeholders: ['location'],
+  );
 }
 
 /// 栽培方法リサーチプロンプト集
@@ -1113,6 +1276,7 @@ class AIResearchPrompts {
     SoilResearchPrompts.quickDiagnosis,
     ClimateResearchPrompts.growingCalendar,
     ClimateResearchPrompts.microclimate,
+    ClimateResearchPrompts.comprehensive,
     PlantCareResearchPrompts.naturalFarming,
     PlantCareResearchPrompts.troubleshooting,
     PestDiseaseResearchPrompts.identify,
