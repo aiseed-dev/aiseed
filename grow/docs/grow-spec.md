@@ -4,6 +4,38 @@
 
 ---
 
+## 0. 国際化対応
+
+### 0.1 対応言語
+
+| 言語 | 対応状況 | 備考 |
+|------|----------|------|
+| 日本語 | 主言語 | UIおよびコンテンツ |
+| English | 対応予定 | UI、仕様書、栽培方法・土壌分類 |
+
+### 0.2 多言語対応の範囲
+
+| 項目 | 日本語 | English |
+|------|--------|---------|
+| アプリUI | ○ | ○ |
+| 仕様書 | grow-spec.md | grow-spec-en.md |
+| 栽培方法分類 | name（日本語） | name_en |
+| 土壌分類（WRB） | name_ja | name_en |
+| ユーザー入力 | そのまま保存 | そのまま保存 |
+
+### 0.3 グローバル展開の意義
+
+日本発の自然農法（福岡正信、岡田茂吉、自然栽培、自然農、炭素循環農法）は世界的に注目されているが、体系的に記録・比較できるアプリは存在しない。本アプリは日本の知恵を世界に届けるツールとなる。
+
+| 日本の知恵 | 世界での認知 |
+|------------|--------------|
+| 福岡正信 自然農法 | "The One-Straw Revolution" として有名 |
+| 岡田茂吉 自然農法 | MOA Natural Farming として展開中 |
+| 自然栽培・自然農 | Regenerative Agriculture の一形態 |
+| 炭素循環農法 | Soil Carbon Sequestration として注目 |
+
+---
+
 ## 1. コンセプト
 
 ### 1.1 背景
@@ -240,12 +272,44 @@ Cloudflare Pagesの公開写真はそのまま販売用ホームページの素�
 
 | 領域 | 技術 |
 |------|------|
-| フロントエンド | Flutter Web（自己完結型Widget） |
+| モバイル | Flutter（iOS / Android）← 主要プラットフォーム |
 | バックエンド | Cloudflare Workers |
 | データベース | Cloudflare D1（SQLite） |
 | ストレージ | Cloudflare Pages（公開）/ R2（非公開） |
-| 認証 | Cloudflare Access + GitHub OAuth |
-| ローカル保存 | IndexedDB（キャッシュ） |
+| 認証 | Cloudflare Access + GitHub/Google/Apple OAuth |
+| ローカル保存 | SQLite（モバイル）/ IndexedDB（Web） |
+| 国際化 | Flutter intl / arb files |
+
+### 9.1 プラットフォーム優先度
+
+| プラットフォーム | 優先度 | 理由 |
+|------------------|--------|------|
+| iOS | 高 | カメラ・写真撮影に必須 |
+| Android | 高 | カメラ・写真撮影に必須 |
+| Web | 低 | 閲覧用として将来検討 |
+
+### 9.2 栽培方法分類（実装済み）
+
+| コード | 日本語名 | English |
+|--------|----------|---------|
+| natural_fukuoka | 自然農法（福岡正信） | Fukuoka Natural Farming |
+| natural_okada | 自然農法（岡田茂吉） | MOA Natural Farming |
+| natural_cultivation | 自然栽培 | Natural Cultivation |
+| natural_farming | 自然農 | Shizen-no (Natural Farming) |
+| carbon_cycling | 炭素循環農法 | Carbon Cycling Agriculture |
+| organic | 一般有機農業 | Organic Farming |
+| conventional | 慣行農業 | Conventional Farming |
+
+### 9.3 土壌分類（WRB 32分類 実装済み）
+
+国際標準のWRB（World Reference Base for Soil Resources 2022）を採用。日本語名は農耕地土壌分類に準拠。
+
+日本で一般的な土壌（18種）：
+- Andosols（黒ボク土）← 日本の代表的土壌
+- Fluvisols（沖積土）← 日本の農地で最多
+- Cambisols（褐色森林土）
+- Gleysols（グライ土）
+- その他14種
 
 ---
 
