@@ -859,21 +859,38 @@ async def get_checkin_page(farmer_id: str, farmer_name: str = ""):
 # [AI-USAGE: NONE] ルールベース実装、AI不使用
 
 @app.get("/internal/grow/farming-methods")
-async def get_farming_methods():
-    """栽培方法の一覧を取得"""
+async def get_farming_methods(lang: str = "ja"):
+    """栽培方法の一覧を取得 / Get list of farming methods"""
     global grow_service
     return {
         "status": "ok",
-        "methods": grow_service.get_farming_methods()
+        "methods": grow_service.get_farming_methods(lang=lang)
+    }
+
+
+@app.get("/internal/grow/soil-types")
+async def get_soil_types(lang: str = "ja", japan_only: bool = False):
+    """
+    土壌タイプの一覧を取得（WRB 32分類）
+    Get list of soil types (WRB 32 Reference Soil Groups)
+
+    Args:
+        lang: Language ("ja" or "en")
+        japan_only: Filter to Japan-common soil types only
+    """
+    global grow_service
+    return {
+        "status": "ok",
+        "soil_types": grow_service.get_soil_types(lang=lang, japan_only=japan_only)
     }
 
 
 @app.post("/internal/grow/plant")
 async def create_plant(request: PlantCreateRequest):
-    """植物を登録"""
+    """植物を登録 / Register a plant"""
     global grow_service
 
-    logger.info(f"[Grow] CREATE_PLANT user={request.user_id} name={request.name} method={request.farming_method}")
+    logger.info(f"[Grow] CREATE_PLANT user={request.user_id} name={request.name} method={request.farming_method} soil={request.soil_type}")
 
     plant = grow_service.create_plant(
         user_id=request.user_id,
@@ -883,6 +900,8 @@ async def create_plant(request: PlantCreateRequest):
         farming_method=request.farming_method,
         farming_method_sub=request.farming_method_sub,
         farming_method_notes=request.farming_method_notes,
+        soil_type=request.soil_type,
+        soil_type_notes=request.soil_type_notes,
         notes=request.notes
     )
 

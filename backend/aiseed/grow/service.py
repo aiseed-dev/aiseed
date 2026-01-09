@@ -10,7 +10,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
-from .models import Plant, Observation, PlantStats, FARMING_METHODS
+from .models import (
+    Plant, Observation, PlantStats,
+    FARMING_METHODS, SOIL_TYPES, JAPAN_COMMON_SOIL_TYPES
+)
 
 logger = logging.getLogger("aiseed.grow")
 
@@ -24,9 +27,41 @@ class GrowService:
 
     # ==================== 栽培方法 ====================
 
-    def get_farming_methods(self) -> dict:
+    def get_farming_methods(self, lang: str = "ja") -> dict:
         """栽培方法の一覧を取得"""
         return FARMING_METHODS
+
+    # ==================== 土壌分類 ====================
+
+    def get_soil_types(self, lang: str = "ja", japan_only: bool = False) -> dict:
+        """
+        土壌タイプの一覧を取得（WRB 32分類）
+
+        Args:
+            lang: 言語 ("ja" or "en")
+            japan_only: 日本で一般的な土壌のみ
+        """
+        if japan_only:
+            types = {k: v for k, v in SOIL_TYPES.items() if k in JAPAN_COMMON_SOIL_TYPES}
+        else:
+            types = SOIL_TYPES
+
+        # 言語に応じた形式で返す
+        result = {}
+        for code, data in types.items():
+            if lang == "en":
+                result[code] = {
+                    "name": data["name_en"],
+                    "description": data["description_en"],
+                    "japan_common": data.get("japan_common", False),
+                }
+            else:
+                result[code] = {
+                    "name": data["name_ja"],
+                    "description": data["description_ja"],
+                    "japan_common": data.get("japan_common", False),
+                }
+        return result
 
     # ==================== 植物管理 ====================
 
@@ -39,6 +74,8 @@ class GrowService:
         farming_method: Optional[str] = "undecided",
         farming_method_sub: Optional[str] = None,
         farming_method_notes: Optional[str] = None,
+        soil_type: Optional[str] = "unknown",
+        soil_type_notes: Optional[str] = None,
         notes: Optional[str] = None
     ) -> Plant:
         """植物を登録"""
@@ -51,6 +88,8 @@ class GrowService:
             farming_method=farming_method,
             farming_method_sub=farming_method_sub,
             farming_method_notes=farming_method_notes,
+            soil_type=soil_type,
+            soil_type_notes=soil_type_notes,
             notes=notes,
             started_at=datetime.now(),
             created_at=datetime.now(),
