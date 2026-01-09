@@ -37,12 +37,13 @@ from community.models import (
     Favorite, CheckIn, NotificationSettings,
     FavoriteRequest, CheckInRequest, NotificationSettingsRequest
 )
-from grow import GrowService, GrowAIService
+from grow import GrowService, GrowAIService, ClimateService
 from grow.models import (
     Plant, Observation, PlantStats,
     PlantCreateRequest, ObservationCreateRequest,
     GrowthAnalysisRequest, ProblemDiagnosisRequest, HarvestPredictionRequest
 )
+from grow.climate_models import ClimateData, ClimateSimpleResponse, ClimateRequest
 
 # ==================== 設定 ====================
 class Settings(BaseSettings):
@@ -74,6 +75,7 @@ shipment_service: Optional[ShipmentService] = None
 community_service: Optional[CommunityService] = None
 grow_service: Optional[GrowService] = None
 grow_ai_service: Optional[GrowAIService] = None  # BYOA対応AI分析
+climate_service: Optional[ClimateService] = None  # ERA5気候データ
 
 # ==================== データベース ====================
 async def init_db():
@@ -103,7 +105,7 @@ async def close_db():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """アプリケーションライフサイクル管理"""
-    global agent, spark_experience, shipment_service, community_service, grow_service, grow_ai_service
+    global agent, spark_experience, shipment_service, community_service, grow_service, grow_ai_service, climate_service
 
     await init_db()
 
@@ -137,6 +139,10 @@ async def lifespan(app: FastAPI):
         )
     grow_ai_service = GrowAIService(ai_query=ai_query_wrapper)
     logger.info("Grow AI Service 初期化完了 (BYOA対応)")
+
+    # 気候データサービスの初期化
+    climate_service = ClimateService(cache_path="climate_cache")
+    logger.info("Climate Service 初期化完了 (ERA5)")
 
     logger.info("AIseed API Server 起動")
     yield
@@ -1205,6 +1211,120 @@ async def extract_insights_ai(user_id: str, plant_id: str, observation_text: str
     return {
         "status": "ok",
         "insights": insights
+    }
+
+
+# ==================== 気候データ（ERA5） ====================
+# [AI-USAGE: NONE] ERA5再解析データを使用、AI不使用
+
+@app.get("/internal/grow/climate/{lat}/{lon}")
+async def get_climate(lat: float, lon: float, location_name: Optional[str] = None):
+    """
+    指定座標の気候データを取得（ERA5ベース）
+
+    Args:
+        lat: 緯度 (-90 to 90)
+        lon: 経度 (-180 to 180)
+        location_name: 地名（オプション）
+
+    Returns:
+        気候データ（月別気温・降水量、霜日、栽培カレンダーなど）
+    """
+    global climate_service
+
+    logger.info(f"[Climate] GET lat={lat} lon={lon}")
+
+    if not (-90 <= lat <= 90):
+        raise HTTPException(status_code=400, detail="緯度は-90〜90の範囲で指定してください")
+    if not (-180 <= lon <= 180):
+        raise HTTPException(status_code=400, detail="経度は-180〜180の範囲で指定してください")
+
+    climate = climate_service.get_climate(lat, lon, location_name)
+
+    return {
+        "status": "ok",
+        "climate": climate.model_dump()
+    }
+
+
+@app.get("/internal/grow/climate/{lat}/{lon}/simple")
+async def get_climate_simple(
+    lat: float,
+    lon: float,
+    location_name: Optional[str] = None,
+    lang: str = "ja"
+):
+    """
+    簡易気候データを取得（Grow App向け）
+
+    栽培に必要な最小限の情報を返す（軽量レスポンス）
+
+    Args:
+        lat: 緯度
+        lon: 経度
+        location_name: 地名（オプション）
+        lang: 言語 ("ja" or "en")
+    """
+    global climate_service
+
+    logger.info(f"[Climate] GET_SIMPLE lat={lat} lon={lon} lang={lang}")
+
+    if not (-90 <= lat <= 90):
+        raise HTTPException(status_code=400, detail="Invalid latitude")
+    if not (-180 <= lon <= 180):
+        raise HTTPException(status_code=400, detail="Invalid longitude")
+
+    climate = climate_service.get_climate_simple(lat, lon, location_name, lang)
+
+    return {
+        "status": "ok",
+        "climate": climate.model_dump()
+    }
+
+
+@app.post("/internal/grow/climate")
+async def get_climate_post(request: ClimateRequest):
+    """
+    気候データを取得（POST版）
+
+    Body:
+        lat: 緯度
+        lon: 経度
+        location_name: 地名（オプション）
+    """
+    global climate_service
+
+    logger.info(f"[Climate] POST lat={request.lat} lon={request.lon}")
+
+    climate = climate_service.get_climate(
+        request.lat,
+        request.lon,
+        request.location_name
+    )
+
+    return {
+        "status": "ok",
+        "climate": climate.model_dump()
+    }
+
+
+@app.get("/internal/grow/climate/zones")
+async def get_climate_zones(lang: str = "ja"):
+    """
+    ケッペン気候区分の一覧を取得
+
+    Args:
+        lang: 言語 ("ja" or "en")
+    """
+    from grow.climate_service import CLIMATE_ZONES
+
+    result = {}
+    for code, names in CLIMATE_ZONES.items():
+        result[code] = names["ja"] if lang == "ja" else names["en"]
+
+    return {
+        "status": "ok",
+        "zones": result
     }
 
 
