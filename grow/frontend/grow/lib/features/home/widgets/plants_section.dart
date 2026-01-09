@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../shared/theme/colors.dart';
+import '../../plant/plant_registration_screen.dart';
 
 /// 植物セクション
 ///
@@ -94,7 +95,12 @@ class PlantsSection extends StatelessWidget {
           const SizedBox(height: 16),
           OutlinedButton.icon(
             onPressed: () {
-              // TODO: 植物登録画面へ遷移
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const PlantRegistrationScreen(),
+                ),
+              );
             },
             icon: const Icon(Icons.add),
             label: const Text('植物を登録'),

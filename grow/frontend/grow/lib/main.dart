@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'shared/theme/theme.dart';
 import 'features/home/home_screen.dart';
 
@@ -26,6 +27,18 @@ class GrowApp extends StatelessWidget {
     return MaterialApp(
       title: 'Grow',
       debugShowCheckedModeBanner: false,
+
+      // 多言語対応
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('ja', 'JP'),
+        Locale('en', 'US'),
+      ],
+      locale: const Locale('ja', 'JP'),
 
       // テーマ設定
       theme: GrowTheme.light,

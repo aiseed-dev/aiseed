@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../shared/theme/colors.dart';
+import '../observation/observation_recording_screen.dart';
 import 'widgets/greeting_section.dart';
 import 'widgets/plants_section.dart';
 import 'widgets/recent_observations_section.dart';
@@ -152,7 +153,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   label: '写真を撮る',
                   onTap: () {
                     Navigator.pop(context);
-                    // TODO: カメラ起動
+                    _navigateToObservationRecording(context);
                   },
                 ),
                 _buildCaptureOption(
@@ -161,7 +162,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   label: '写真を選ぶ',
                   onTap: () {
                     Navigator.pop(context);
-                    // TODO: ギャラリー起動
+                    _navigateToObservationRecording(context);
                   },
                 ),
                 _buildCaptureOption(
@@ -170,7 +171,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   label: 'メモのみ',
                   onTap: () {
                     Navigator.pop(context);
-                    // TODO: メモ入力画面
+                    _navigateToObservationRecording(context);
                   },
                 ),
               ],
@@ -178,6 +179,15 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 24),
           ],
         ),
+      ),
+    );
+  }
+
+  void _navigateToObservationRecording(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ObservationRecordingScreen(),
       ),
     );
   }
