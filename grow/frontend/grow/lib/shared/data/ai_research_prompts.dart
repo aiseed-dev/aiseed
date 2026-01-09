@@ -205,6 +205,240 @@ Estimated soil: Andosol
 ''',
     placeholders: ['location', 'color', 'texture', 'drainage', 'other'],
   );
+
+  /// 土壌の3要素（物理性・生物性・化学性）を総合的に調べる
+  static const comprehensive = ResearchPrompt(
+    id: 'soil_comprehensive',
+    category: ResearchCategory.soil,
+    titleJa: '土壌の3要素を調べる',
+    titleEn: 'Comprehensive Soil Analysis',
+    descriptionJa: '物理性・生物性・化学性の3つの観点で土壌を診断',
+    descriptionEn: 'Diagnose soil from physical, biological, and chemical aspects',
+    promptTemplateJa: '''
+{location}で{farming_method}をしています。
+
+土壌について、以下の3つの観点から教えてください。
+
+【1. 物理性（Physical Properties）】
+- この地域で一般的な土性（砂質/壌土/粘土質）
+- 団粒構造の傾向
+- 排水性・保水性の特徴
+- 物理性を改善するためのアドバイス
+
+【2. 生物性（Biological Properties）】
+- 土壌生物（微生物、ミミズなど）を増やす方法
+- 有機物の施用方法（堆肥、緑肥、草マルチなど）
+- 自然農法で土を育てるポイント
+- 健康な土の見分け方（匂い、色など）
+
+【3. 化学性（Chemical Properties）】
+- この地域の土壌のpH傾向
+- 不足しがちな養分（窒素、リン酸、カリウムなど）
+- 化学肥料を使わない養分管理の方法
+- 土壌改良材の自然な選択肢
+
+※{farming_method}の考え方に沿った、自然なアドバイスをお願いします。
+''',
+    promptTemplateEn: '''
+I'm practicing {farming_method} in {location}.
+
+Please tell me about the soil from these three perspectives:
+
+【1. Physical Properties】
+- Common soil texture in this area (sandy/loam/clay)
+- Soil aggregate structure tendency
+- Drainage and water retention characteristics
+- Advice for improving physical properties
+
+【2. Biological Properties】
+- How to increase soil life (microbes, earthworms, etc.)
+- Organic matter application (compost, green manure, grass mulch)
+- Tips for building soil naturally
+- How to recognize healthy soil (smell, color, etc.)
+
+【3. Chemical Properties】
+- pH tendency in this region
+- Nutrients that tend to be deficient (N, P, K, etc.)
+- Natural nutrient management without chemical fertilizers
+- Natural soil amendment options
+
+※Please provide advice aligned with {farming_method} principles.
+''',
+    exampleInputJa: '神奈川県横浜市、自然栽培',
+    exampleInputEn: 'Yokohama, Japan, Natural farming',
+    exampleOutputJa: '''
+【神奈川県横浜市の土壌診断（自然栽培向け）】
+
+■ 1. 物理性
+土性：黒ボク土（火山灰土壌）、軽くてふかふか
+団粒構造：形成されやすいが、耕しすぎると崩れる
+排水性：良好（乾燥しやすい）
+保水性：やや低い
+
+改善アドバイス：
+- 草マルチで土を覆い、乾燥を防ぐ
+- 不耕起または浅耕起で団粒構造を維持
+- 緑肥の根で土を柔らかく保つ
+
+■ 2. 生物性
+土壌微生物：火山灰土壌は微生物が定着しやすい
+ミミズ：有機物を入れると増える
+
+改善アドバイス：
+- 落ち葉、刈り草をマルチとして敷く
+- 米ぬかボカシで微生物を活性化
+- 冬も緑肥（ライムギ等）で根を維持
+- 健康な土の匂い＝森の香り
+
+■ 3. 化学性
+pH：弱酸性（5.5-6.5）に傾きやすい
+不足しがち：リン酸（火山灰に固定される）
+
+改善アドバイス：
+- 米ぬか、油かすで窒素補給
+- 骨粉、魚粉でリン酸補給（ゆっくり効く）
+- 草木灰でカリウム＋pH調整
+- 貝殻石灰で酸度を緩やかに調整
+''',
+    exampleOutputEn: '''
+【Yokohama Soil Diagnosis (Natural Farming)】
+
+■ 1. Physical Properties
+Texture: Andosol (volcanic ash), light and fluffy
+Aggregation: Forms easily, but breaks down if over-tilled
+Drainage: Good (dries quickly)
+Water retention: Somewhat low
+
+Improvement:
+- Grass mulch to prevent drying
+- No-till or shallow tillage to maintain structure
+- Green manure roots to keep soil loose
+
+■ 2. Biological Properties
+Microbes: Volcanic ash soil supports microbial life
+Earthworms: Increase with organic matter
+
+Improvement:
+- Apply fallen leaves, grass clippings as mulch
+- Rice bran bokashi to activate microbes
+- Winter green manure (rye) to maintain roots
+- Healthy soil smells like forest
+
+■ 3. Chemical Properties
+pH: Tends toward slight acidity (5.5-6.5)
+Deficiency: Phosphorus (fixed by volcanic ash)
+
+Improvement:
+- Rice bran, oil cake for nitrogen
+- Bone meal, fish meal for phosphorus
+- Wood ash for potassium + pH adjustment
+- Oyster shell lime for gentle pH correction
+''',
+    placeholders: ['location', 'farming_method'],
+  );
+
+  /// 土壌観察による簡易診断
+  static const quickDiagnosis = ResearchPrompt(
+    id: 'soil_quick_diagnosis',
+    category: ResearchCategory.soil,
+    titleJa: '土壌を観察して診断',
+    titleEn: 'Soil Observation Diagnosis',
+    descriptionJa: '5つの観察項目から土壌の状態を診断',
+    descriptionEn: 'Diagnose soil condition from 5 observations',
+    promptTemplateJa: '''
+畑の土を観察しました。診断してください。
+
+【観察結果】
+1. 場所：{location}
+2. 土を握ると：{grip_test}
+3. 雨の後の状態：{after_rain}
+4. 土の匂い：{smell}
+5. 掘った時の様子：{digging}
+
+【教えてほしいこと】
+- 土壌タイプの推定
+- 物理性の評価（団粒構造、排水性）
+- 生物性の評価（微生物活性、土壌動物）
+- 化学性の傾向（pH、養分）
+- 自然農法での改善優先順位
+- 具体的な改善方法
+''',
+    promptTemplateEn: '''
+I observed my garden soil. Please diagnose it.
+
+【Observations】
+1. Location: {location}
+2. When squeezed: {grip_test}
+3. After rain: {after_rain}
+4. Soil smell: {smell}
+5. When digging: {digging}
+
+【Please tell me】
+- Estimated soil type
+- Physical assessment (aggregation, drainage)
+- Biological assessment (microbial activity, soil fauna)
+- Chemical tendency (pH, nutrients)
+- Improvement priorities for natural farming
+- Specific improvement methods
+''',
+    exampleInputJa: '握ると軽く固まりすぐ崩れる、翌日には乾く、森のような香り、ミミズが数匹いた',
+    exampleInputEn: 'Forms lightly when squeezed then crumbles, dries by next day, forest-like smell, found several earthworms',
+    exampleOutputJa: '''
+【診断結果】
+
+■ 土壌タイプ：壌土〜砂壌土（良好な土性）
+
+■ 物理性評価：★★★★☆
+- 団粒構造：良好（握って崩れる）
+- 排水性：良好（翌日乾く）
+- 保水性：やや低め
+
+■ 生物性評価：★★★★★
+- 微生物活性：高い（森の香り＝放線菌が活発）
+- ミミズ：存在確認（有機物分解が進んでいる）
+
+■ 化学性傾向：
+- pH：中性〜弱酸性と推定
+- 有機物：豊富（香りから判断）
+
+■ 改善優先順位：
+1. 保水性の向上（乾燥防止）
+2. 現状維持（良い状態）
+
+■ 具体的アドバイス：
+- 草マルチを継続して乾燥を防ぐ
+- 耕しすぎない（今の団粒構造を維持）
+- 有機物を少しずつ追加し続ける
+''',
+    exampleOutputEn: '''
+【Diagnosis Result】
+
+■ Soil Type: Loam to sandy loam (good texture)
+
+■ Physical Assessment: ★★★★☆
+- Aggregation: Good (crumbles when squeezed)
+- Drainage: Good (dries by next day)
+- Water retention: Slightly low
+
+■ Biological Assessment: ★★★★★
+- Microbial activity: High (forest smell = active actinomycetes)
+- Earthworms: Present (organic matter decomposing well)
+
+■ Chemical Tendency:
+- pH: Estimated neutral to slightly acidic
+- Organic matter: Rich (judged by smell)
+
+■ Improvement Priority:
+1. Improve water retention (prevent drying)
+2. Maintain current state (good condition)
+
+■ Specific Advice:
+- Continue grass mulching to prevent drying
+- Avoid over-tilling (maintain current aggregation)
+- Keep adding organic matter gradually
+''',
+    placeholders: ['location', 'grip_test', 'after_rain', 'smell', 'digging'],
+  );
 }
 
 /// 気候リサーチプロンプト集
@@ -875,6 +1109,8 @@ class AIResearchPrompts {
   static const List<ResearchPrompt> all = [
     SoilResearchPrompts.basic,
     SoilResearchPrompts.detailed,
+    SoilResearchPrompts.comprehensive,
+    SoilResearchPrompts.quickDiagnosis,
     ClimateResearchPrompts.growingCalendar,
     ClimateResearchPrompts.microclimate,
     PlantCareResearchPrompts.naturalFarming,
