@@ -4,27 +4,28 @@ import 'soil_type.dart';
 
 /// 栽培場所モデル
 ///
-/// 責務: ベランダ、畑、プランターなどの栽培場所を表す
+/// 責務: 畑・庭、プランター、その他の栽培場所を表す
 class Field {
   final String id;
-  final String name;  // 例: ベランダ、畑A、プランター
+  final String name;  // 例: メインの畑、ベランダのプランター
 
   // 栽培場所タイプ
   final PlaceType placeType;
+  final String? placeTypeDescription;  // その他の場合の説明（水耕栽培など）
 
   // 位置情報
   final String? address;  // 住所（表示用）
   final double? latitude;
   final double? longitude;
 
-  // 土壌情報（3要素）
+  // 土壌情報（3要素）- 地植え・プランターの場合
   final SoilType? soilType;
   final String? soilPhysical;  // 物理性メモ
   final String? soilBiological;  // 生物性メモ
   final String? soilChemical;  // 化学性メモ
   final String? soilNotes;  // その他メモ
 
-  // 農法（畑タイプの場合のみ使用）
+  // 農法（地植えの場合のみ使用）
   final FarmingMethod? farmingMethod;
   final String? farmingMethodNotes;
 
@@ -41,6 +42,7 @@ class Field {
     required this.id,
     required this.name,
     required this.placeType,
+    this.placeTypeDescription,
     this.address,
     this.latitude,
     this.longitude,
@@ -66,6 +68,7 @@ class Field {
       placeType: json['place_type'] != null
           ? PlaceType.fromId(json['place_type'] as String)
           : PlaceType.other,
+      placeTypeDescription: json['place_type_description'] as String?,
       address: json['address'] as String?,
       latitude: json['latitude'] as double?,
       longitude: json['longitude'] as double?,
@@ -94,6 +97,7 @@ class Field {
       'id': id,
       'name': name,
       'place_type': placeType.id,
+      'place_type_description': placeTypeDescription,
       'address': address,
       'latitude': latitude,
       'longitude': longitude,
@@ -117,6 +121,7 @@ class Field {
     String? id,
     String? name,
     PlaceType? placeType,
+    String? placeTypeDescription,
     String? address,
     double? latitude,
     double? longitude,
@@ -137,6 +142,7 @@ class Field {
       id: id ?? this.id,
       name: name ?? this.name,
       placeType: placeType ?? this.placeType,
+      placeTypeDescription: placeTypeDescription ?? this.placeTypeDescription,
       address: address ?? this.address,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
