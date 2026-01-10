@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../shared/theme/colors.dart';
 import '../../../shared/models/plant.dart';
+import '../../../shared/models/farming_method.dart';
 
 /// 植物選択ウィジェット
 ///
@@ -250,6 +251,3 @@ class _PlantPickerSheet extends StatelessWidget {
     ];
   }
 }
-
-// plant.dartをインポートするために必要
-import '../../../shared/models/farming_method.dart';
