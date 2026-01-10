@@ -30,7 +30,7 @@ class _FieldRegistrationScreenState extends State<FieldRegistrationScreen> {
   final _soilNotesController = TextEditingController();
   final _farmingNotesController = TextEditingController();
 
-  PlaceType _selectedPlaceType = PlaceType.balcony;
+  PlaceType _selectedPlaceType = PlaceType.ground;
   FarmingMethod? _selectedFarmingMethod;
   SoilType? _selectedSoilType;
 
