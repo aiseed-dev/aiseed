@@ -4,9 +4,9 @@ import '../../shared/models/models.dart';
 import '../../shared/data/ai_research_prompts.dart';
 import '../../shared/services/field_repository.dart';
 import '../ai_research/widgets/ai_research_hint.dart';
-import '../plant/widgets/farming_method_selector.dart';
 import '../plant/widgets/soil_type_selector.dart';
 import 'widgets/place_type_selector.dart';
+import 'widgets/cultivation_method_selector.dart';
 
 /// 栽培場所登録画面
 ///
@@ -179,17 +179,17 @@ class _FieldRegistrationScreenState extends State<FieldRegistrationScreen> {
             ),
             const SizedBox(height: 24),
 
-            // 農法セクション（畑の場合のみ表示）
+            // 栽培方法セクション（地植えの場合のみ表示）
             if (_showFarmingMethod) ...[
               // 区切り線
               const Divider(),
               const SizedBox(height: 16),
 
-              // 農法（必須）
-              _buildSectionTitle('農法', required: true),
+              // 栽培方法
+              _buildSectionTitle('栽培方法'),
               const SizedBox(height: 8),
-              FarmingMethodSelector(
-                selectedMethod: _selectedFarmingMethod ?? FarmingMethod.naturalCultivation,
+              CultivationMethodSelector(
+                selectedMethod: _selectedFarmingMethod,
                 onChanged: (method) {
                   setState(() {
                     _selectedFarmingMethod = method;
@@ -200,7 +200,7 @@ class _FieldRegistrationScreenState extends State<FieldRegistrationScreen> {
               TextFormField(
                 controller: _farmingNotesController,
                 decoration: const InputDecoration(
-                  hintText: '農法についてのメモ（任意）',
+                  hintText: '栽培方法についてのメモ（任意）',
                 ),
                 maxLines: 2,
               ),
