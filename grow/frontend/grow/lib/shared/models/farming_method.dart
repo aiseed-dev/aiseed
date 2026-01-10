@@ -49,27 +49,29 @@ enum FarmingType {
 
 /// 農法の種類（詳細）
 ///
-/// 自然系栽培の具体的な農法
+/// 具体的な農法を定義
 enum FarmingMethod {
-  // ========== 有機栽培 ==========
+  // ========== 慣行農法（化学肥料・農薬を使う） ==========
 
-  /// 有機栽培（詳細指定なし）
+  /// 慣行農法
+  conventional(
+    'conventional',
+    '慣行農法',
+    'Conventional Farming',
+    '化学肥料・農薬を使用',
+    '🧪',
+    null,  // FarmingType なし
+  ),
+
+  // ========== 有機栽培（細分類なし） ==========
+
+  /// 有機栽培
   organic(
     'organic',
     '有機栽培',
     'Organic Farming',
-    '有機肥料で栄養を補う',
+    '有機肥料で栄養を補う（化学肥料・農薬不使用）',
     '🍃',
-    FarmingType.organic,
-  ),
-
-  /// ぼかし肥料栽培
-  bokashi(
-    'bokashi',
-    'ぼかし肥料栽培',
-    'Bokashi Composting',
-    '発酵有機肥料を使用',
-    '🫙',
     FarmingType.organic,
   ),
 
@@ -240,7 +242,7 @@ enum FarmingMethod {
   final String nameEn;
   final String description;
   final String emoji;
-  final FarmingType type;
+  final FarmingType? type;  // 慣行農法はnull
 
   const FarmingMethod(
     this.id,
@@ -250,6 +252,9 @@ enum FarmingMethod {
     this.emoji,
     this.type,
   );
+
+  /// 化学肥料・農薬を使うかどうか
+  bool get usesChemical => this == FarmingMethod.conventional;
 
   /// 現在のロケールに応じた名前を取得
   String getName({String locale = 'ja'}) {
@@ -279,5 +284,21 @@ enum FarmingMethod {
   /// 有機系農法のみ取得
   static List<FarmingMethod> get organicMethods {
     return byType(FarmingType.organic);
+  }
+
+  /// 化学肥料・農薬を使わない農法のみ取得
+  static List<FarmingMethod> get nonChemicalMethods {
+    return FarmingMethod.values
+        .where((m) => !m.usesChemical)
+        .toList();
+  }
+
+  /// 主要な選択肢（慣行・有機・自然系の代表）
+  static List<FarmingMethod> get mainChoices {
+    return [
+      FarmingMethod.conventional,
+      FarmingMethod.organic,
+      FarmingMethod.naturalCultivation,  // 自然系の代表として
+    ];
   }
 }
