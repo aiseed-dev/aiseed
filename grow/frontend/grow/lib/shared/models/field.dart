@@ -1,12 +1,16 @@
 import 'farming_method.dart';
+import 'place_type.dart';
 import 'soil_type.dart';
 
-/// 畑（栽培場所）モデル
+/// 栽培場所モデル
 ///
 /// 責務: ベランダ、畑、プランターなどの栽培場所を表す
 class Field {
   final String id;
   final String name;  // 例: ベランダ、畑A、プランター
+
+  // 栽培場所タイプ
+  final PlaceType placeType;
 
   // 位置情報
   final String? address;  // 住所（表示用）
@@ -20,8 +24,8 @@ class Field {
   final String? soilChemical;  // 化学性メモ
   final String? soilNotes;  // その他メモ
 
-  // 農法
-  final FarmingMethod farmingMethod;
+  // 農法（畑タイプの場合のみ使用）
+  final FarmingMethod? farmingMethod;
   final String? farmingMethodNotes;
 
   // 気候データ（API取得結果をキャッシュ）
@@ -36,6 +40,7 @@ class Field {
   const Field({
     required this.id,
     required this.name,
+    required this.placeType,
     this.address,
     this.latitude,
     this.longitude,
@@ -44,7 +49,7 @@ class Field {
     this.soilBiological,
     this.soilChemical,
     this.soilNotes,
-    required this.farmingMethod,
+    this.farmingMethod,
     this.farmingMethodNotes,
     this.climateZone,
     this.lastFrostDate,
@@ -58,6 +63,9 @@ class Field {
     return Field(
       id: json['id'] as String,
       name: json['name'] as String,
+      placeType: json['place_type'] != null
+          ? PlaceType.fromId(json['place_type'] as String)
+          : PlaceType.other,
       address: json['address'] as String?,
       latitude: json['latitude'] as double?,
       longitude: json['longitude'] as double?,
@@ -68,7 +76,9 @@ class Field {
       soilBiological: json['soil_biological'] as String?,
       soilChemical: json['soil_chemical'] as String?,
       soilNotes: json['soil_notes'] as String?,
-      farmingMethod: FarmingMethod.fromId(json['farming_method'] as String),
+      farmingMethod: json['farming_method'] != null
+          ? FarmingMethod.fromId(json['farming_method'] as String)
+          : null,
       farmingMethodNotes: json['farming_method_notes'] as String?,
       climateZone: json['climate_zone'] as String?,
       lastFrostDate: json['last_frost_date'] as String?,
@@ -83,6 +93,7 @@ class Field {
     return {
       'id': id,
       'name': name,
+      'place_type': placeType.id,
       'address': address,
       'latitude': latitude,
       'longitude': longitude,
@@ -91,7 +102,7 @@ class Field {
       'soil_biological': soilBiological,
       'soil_chemical': soilChemical,
       'soil_notes': soilNotes,
-      'farming_method': farmingMethod.id,
+      'farming_method': farmingMethod?.id,
       'farming_method_notes': farmingMethodNotes,
       'climate_zone': climateZone,
       'last_frost_date': lastFrostDate,
@@ -105,6 +116,7 @@ class Field {
   Field copyWith({
     String? id,
     String? name,
+    PlaceType? placeType,
     String? address,
     double? latitude,
     double? longitude,
@@ -124,6 +136,7 @@ class Field {
     return Field(
       id: id ?? this.id,
       name: name ?? this.name,
+      placeType: placeType ?? this.placeType,
       address: address ?? this.address,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
