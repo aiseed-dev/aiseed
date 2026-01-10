@@ -30,7 +30,7 @@ class GrowTheme {
     scaffoldBackgroundColor: GrowColors.paleSoil,
 
     // Card
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       color: Colors.white,
       elevation: 2,
       shadowColor: GrowColors.darkSoil.withValues(alpha: 0.1),
@@ -177,7 +177,7 @@ class GrowTheme {
     scaffoldBackgroundColor: GrowColors.darkBackground,
 
     // Card
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       color: GrowColors.darkCard,
       elevation: 0,
       shape: RoundedRectangleBorder(

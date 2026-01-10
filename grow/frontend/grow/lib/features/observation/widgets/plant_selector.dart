@@ -250,6 +250,3 @@ class _PlantPickerSheet extends StatelessWidget {
     ];
   }
 }
-
-// plant.dartをインポートするために必要
-import '../../../shared/models/farming_method.dart';
