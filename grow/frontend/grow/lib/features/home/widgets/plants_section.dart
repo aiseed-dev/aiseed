@@ -1,18 +1,68 @@
 import 'package:flutter/material.dart';
 import '../../../shared/theme/colors.dart';
+import '../../../shared/models/plant.dart';
+import '../../../shared/services/plant_repository.dart';
 import '../../plant/plant_registration_screen.dart';
 
 /// 植物セクション
 ///
 /// 責務: 登録済み植物のカードを横スクロールで表示
-class PlantsSection extends StatelessWidget {
+class PlantsSection extends StatefulWidget {
   const PlantsSection({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // TODO: 実際のデータはリポジトリから取得
-    final plants = _getMockPlants();
+  State<PlantsSection> createState() => _PlantsSectionState();
+}
 
+class _PlantsSectionState extends State<PlantsSection> {
+  final PlantRepository _repository = PlantRepository();
+  List<Plant> _plants = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPlants();
+  }
+
+  Future<void> _loadPlants() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final plants = await _repository.getAll();
+      if (mounted) {
+        setState(() {
+          _plants = plants;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _navigateToRegistration() async {
+    final result = await Navigator.push<Plant>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const PlantRegistrationScreen(),
+      ),
+    );
+
+    // 植物が登録されたら再読み込み
+    if (result != null) {
+      _loadPlants();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -34,7 +84,7 @@ class PlantsSection extends StatelessWidget {
                   ),
                 ],
               ),
-              if (plants.isNotEmpty)
+              if (_plants.isNotEmpty)
                 TextButton(
                   onPressed: () {
                     // TODO: 植物一覧画面へ遷移
@@ -44,7 +94,14 @@ class PlantsSection extends StatelessWidget {
             ],
           ),
         ),
-        if (plants.isEmpty)
+        if (_isLoading)
+          const Padding(
+            padding: EdgeInsets.all(32),
+            child: Center(
+              child: CircularProgressIndicator(),
+            ),
+          )
+        else if (_plants.isEmpty)
           _buildEmptyState(context)
         else
           SizedBox(
@@ -52,9 +109,12 @@ class PlantsSection extends StatelessWidget {
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              itemCount: plants.length,
+              itemCount: _plants.length + 1, // +1 for add button
               itemBuilder: (context, index) {
-                return _PlantCard(plant: plants[index]);
+                if (index == _plants.length) {
+                  return _AddPlantCard(onTap: _navigateToRegistration);
+                }
+                return _PlantCard(plant: _plants[index]);
               },
             ),
           ),
@@ -94,14 +154,7 @@ class PlantsSection extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           OutlinedButton.icon(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const PlantRegistrationScreen(),
-                ),
-              );
-            },
+            onPressed: _navigateToRegistration,
             icon: const Icon(Icons.add),
             label: const Text('植物を登録'),
           ),
@@ -109,37 +162,10 @@ class PlantsSection extends StatelessWidget {
       ),
     );
   }
-
-  List<_PlantData> _getMockPlants() {
-    // デモ用のモックデータ
-    return [
-      _PlantData(
-        name: 'ミニトマト',
-        variety: 'アイコ',
-        daysGrowing: 45,
-        location: 'ベランダ',
-        farmingMethod: '自然栽培',
-      ),
-      _PlantData(
-        name: 'バジル',
-        variety: 'スイートバジル',
-        daysGrowing: 12,
-        location: 'ベランダ',
-        farmingMethod: '自然栽培',
-      ),
-      _PlantData(
-        name: 'きゅうり',
-        variety: '夏すずみ',
-        daysGrowing: 30,
-        location: '畑',
-        farmingMethod: '炭素循環農法',
-      ),
-    ];
-  }
 }
 
 class _PlantCard extends StatelessWidget {
-  final _PlantData plant;
+  final Plant plant;
 
   const _PlantCard({required this.plant});
 
@@ -168,12 +194,20 @@ class _PlantCard extends StatelessWidget {
                     color: GrowColors.paleGreen,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Center(
-                    child: Text(
-                      '📷',
-                      style: TextStyle(fontSize: 32),
-                    ),
-                  ),
+                  child: plant.latestPhotoUrl != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            plant.latestPhotoUrl!,
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : const Center(
+                          child: Text(
+                            '🌱',
+                            style: TextStyle(fontSize: 32),
+                          ),
+                        ),
                 ),
                 const SizedBox(height: 8),
                 // 植物名
@@ -219,18 +253,54 @@ class _PlantCard extends StatelessWidget {
   }
 }
 
-class _PlantData {
-  final String name;
-  final String? variety;
-  final int daysGrowing;
-  final String location;
-  final String farmingMethod;
+/// 植物追加カード
+class _AddPlantCard extends StatelessWidget {
+  final VoidCallback onTap;
 
-  _PlantData({
-    required this.name,
-    this.variety,
-    required this.daysGrowing,
-    required this.location,
-    required this.farmingMethod,
-  });
+  const _AddPlantCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 120,
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      child: Card(
+        margin: EdgeInsets.zero,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: GrowColors.paleGreen,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.add,
+                    color: GrowColors.deepGreen,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '植物を追加',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: GrowColors.deepGreen,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

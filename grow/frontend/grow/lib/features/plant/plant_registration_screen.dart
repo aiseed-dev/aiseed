@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../shared/theme/colors.dart';
 import '../../shared/models/models.dart';
 import '../../shared/data/ai_research_prompts.dart';
+import '../../shared/services/plant_repository.dart';
 import '../ai_research/widgets/ai_research_hint.dart';
 import 'widgets/farming_method_selector.dart';
 import 'widgets/soil_type_selector.dart';
@@ -261,7 +262,6 @@ class _PlantRegistrationScreenState extends State<PlantRegistrationScreen> {
     });
 
     try {
-      // TODO: 実際のデータ保存処理
       final now = DateTime.now();
       final plant = Plant(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -276,15 +276,19 @@ class _PlantRegistrationScreenState extends State<PlantRegistrationScreen> {
         updatedAt: now,
       );
 
+      // リポジトリに保存
+      final repository = PlantRepository();
+      final savedPlant = await repository.save(plant);
+
       // 成功メッセージを表示して戻る
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${plant.name}を登録しました'),
+            content: Text('${savedPlant.name}を登録しました'),
             backgroundColor: GrowColors.lifeGreen,
           ),
         );
-        Navigator.pop(context, plant);
+        Navigator.pop(context, savedPlant);
       }
     } catch (e) {
       if (mounted) {
