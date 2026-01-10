@@ -1,6 +1,6 @@
-/// 農法カテゴリ（第1階層）
+/// 農法カテゴリ（化学肥料・農薬の使用）
 ///
-/// 化学肥料・農薬の使用有無で分類
+/// プランター・鉢の場合はこの2択のみ
 enum FarmingCategory {
   /// 化学肥料・農薬を使う
   chemical('chemical', '化学肥料・農薬を使う', '🧪'),
@@ -24,7 +24,7 @@ enum FarmingCategory {
 
 /// 農法タイプ（第2階層）
 ///
-/// 化学肥料・農薬を使わない場合の分類
+/// 化学肥料・農薬を使わない場合の分類（地植えのみ）
 enum FarmingType {
   /// 有機栽培 - 有機肥料で栄養を補う
   organic('organic', '有機栽培', '有機肥料で栄養を補う', '🍃'),
@@ -47,33 +47,19 @@ enum FarmingType {
   }
 }
 
-/// 農法の種類（第3階層 - 詳細）
+/// 農法の種類（詳細）
 ///
-/// 具体的な農法を定義
+/// 自然系栽培の具体的な農法
 enum FarmingMethod {
-  // ========== 化学肥料・農薬を使う ==========
-
-  /// 慣行農法
-  conventional(
-    'conventional',
-    '慣行農法',
-    'Conventional Farming',
-    '一般的な農法',
-    '🚜',
-    FarmingCategory.chemical,
-    null,
-  ),
-
   // ========== 有機栽培 ==========
 
-  /// 有機農法（JAS有機など）
+  /// 有機栽培（詳細指定なし）
   organic(
     'organic',
-    '有機農法',
+    '有機栽培',
     'Organic Farming',
-    'JAS有機認証など',
+    '有機肥料で栄養を補う',
     '🍃',
-    FarmingCategory.nonChemical,
     FarmingType.organic,
   ),
 
@@ -84,7 +70,6 @@ enum FarmingMethod {
     'Bokashi Composting',
     '発酵有機肥料を使用',
     '🫙',
-    FarmingCategory.nonChemical,
     FarmingType.organic,
   ),
 
@@ -97,7 +82,6 @@ enum FarmingMethod {
     'Natural Cultivation',
     '無肥料・無農薬、木村秋則など',
     '🌱',
-    FarmingCategory.nonChemical,
     FarmingType.natural,
   ),
 
@@ -108,7 +92,6 @@ enum FarmingMethod {
     'Shizen-no',
     '不耕起・草生、川口由一など',
     '🌾',
-    FarmingCategory.nonChemical,
     FarmingType.natural,
   ),
 
@@ -119,7 +102,6 @@ enum FarmingMethod {
     'Fukuoka Natural Farming',
     '不耕起・無除草・無肥料・無農薬',
     '🌾',
-    FarmingCategory.nonChemical,
     FarmingType.natural,
   ),
 
@@ -130,7 +112,6 @@ enum FarmingMethod {
     'MOA Natural Farming',
     '落ち葉・草などの自然堆肥',
     '🍂',
-    FarmingCategory.nonChemical,
     FarmingType.natural,
   ),
 
@@ -141,7 +122,6 @@ enum FarmingMethod {
     'Carbon Cycling Farming',
     '高炭素資材で土壌微生物を活性化',
     '♻️',
-    FarmingCategory.nonChemical,
     FarmingType.natural,
   ),
 
@@ -152,7 +132,6 @@ enum FarmingMethod {
     'Synecoculture',
     '多種混植で生態系を構築',
     '🌳',
-    FarmingCategory.nonChemical,
     FarmingType.natural,
   ),
 
@@ -163,7 +142,6 @@ enum FarmingMethod {
     'Permaculture',
     '持続可能な循環型デザイン',
     '🔄',
-    FarmingCategory.nonChemical,
     FarmingType.natural,
   ),
 
@@ -174,7 +152,6 @@ enum FarmingMethod {
     'No-Till Farming',
     '土を耕さずに栽培',
     '🌿',
-    FarmingCategory.nonChemical,
     FarmingType.natural,
   ),
 
@@ -185,7 +162,6 @@ enum FarmingMethod {
     'Grass Mulching',
     '刈り草で土を覆う',
     '🥬',
-    FarmingCategory.nonChemical,
     FarmingType.natural,
   ),
 
@@ -196,7 +172,6 @@ enum FarmingMethod {
     'Companion Planting',
     '相性の良い植物を混植',
     '🤝',
-    FarmingCategory.nonChemical,
     FarmingType.natural,
   ),
 
@@ -207,7 +182,6 @@ enum FarmingMethod {
     'Biodynamic Agriculture',
     'シュタイナー提唱、宇宙リズムと連動',
     '🌙',
-    FarmingCategory.nonChemical,
     FarmingType.natural,
   ),
 
@@ -218,7 +192,6 @@ enum FarmingMethod {
     'Agroforestry',
     '樹木と作物を組み合わせる',
     '🌲',
-    FarmingCategory.nonChemical,
     FarmingType.natural,
   ),
 
@@ -229,7 +202,6 @@ enum FarmingMethod {
     'JADAM Natural Farming',
     '韓国発、低コスト自然農法',
     '🇰🇷',
-    FarmingCategory.nonChemical,
     FarmingType.natural,
   ),
 
@@ -240,7 +212,6 @@ enum FarmingMethod {
     'Korean Natural Farming',
     '土着微生物を活用',
     '🦠',
-    FarmingCategory.nonChemical,
     FarmingType.natural,
   ),
 
@@ -251,7 +222,6 @@ enum FarmingMethod {
     'Regenerative Agriculture',
     '土壌再生・炭素固定を重視',
     '🔃',
-    FarmingCategory.nonChemical,
     FarmingType.natural,
   ),
 
@@ -262,7 +232,6 @@ enum FarmingMethod {
     'Other Natural',
     '上記に該当しない自然系農法',
     '🌻',
-    FarmingCategory.nonChemical,
     FarmingType.natural,
   );
 
@@ -271,8 +240,7 @@ enum FarmingMethod {
   final String nameEn;
   final String description;
   final String emoji;
-  final FarmingCategory category;
-  final FarmingType? type; // 化学系はnull
+  final FarmingType type;
 
   const FarmingMethod(
     this.id,
@@ -280,7 +248,6 @@ enum FarmingMethod {
     this.nameEn,
     this.description,
     this.emoji,
-    this.category,
     this.type,
   );
 
@@ -295,13 +262,6 @@ enum FarmingMethod {
       (method) => method.id == id,
       orElse: () => FarmingMethod.naturalCultivation,
     );
-  }
-
-  /// カテゴリで絞り込み
-  static List<FarmingMethod> byCategory(FarmingCategory category) {
-    return FarmingMethod.values
-        .where((m) => m.category == category)
-        .toList();
   }
 
   /// タイプで絞り込み

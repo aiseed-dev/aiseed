@@ -25,8 +25,11 @@ class Field {
   final String? soilChemical;  // 化学性メモ
   final String? soilNotes;  // その他メモ
 
-  // 農法（地植えの場合のみ使用）
-  final FarmingMethod? farmingMethod;
+  // 農法関連
+  // - プランター・鉢: useChemicalのみ使用（true=化学肥料・農薬を使う）
+  // - 畑・庭（地植え）: farmingMethod（有機 or 自然系の詳細）を使用
+  final bool? useChemical;  // 化学肥料・農薬を使うか（プランター用）
+  final FarmingMethod? farmingMethod;  // 具体的な農法（地植え用）
   final String? farmingMethodNotes;
 
   // 気候データ（API取得結果をキャッシュ）
@@ -51,6 +54,7 @@ class Field {
     this.soilBiological,
     this.soilChemical,
     this.soilNotes,
+    this.useChemical,
     this.farmingMethod,
     this.farmingMethodNotes,
     this.climateZone,
@@ -79,6 +83,7 @@ class Field {
       soilBiological: json['soil_biological'] as String?,
       soilChemical: json['soil_chemical'] as String?,
       soilNotes: json['soil_notes'] as String?,
+      useChemical: json['use_chemical'] as bool?,
       farmingMethod: json['farming_method'] != null
           ? FarmingMethod.fromId(json['farming_method'] as String)
           : null,
@@ -106,6 +111,7 @@ class Field {
       'soil_biological': soilBiological,
       'soil_chemical': soilChemical,
       'soil_notes': soilNotes,
+      'use_chemical': useChemical,
       'farming_method': farmingMethod?.id,
       'farming_method_notes': farmingMethodNotes,
       'climate_zone': climateZone,
@@ -130,6 +136,7 @@ class Field {
     String? soilBiological,
     String? soilChemical,
     String? soilNotes,
+    bool? useChemical,
     FarmingMethod? farmingMethod,
     String? farmingMethodNotes,
     String? climateZone,
@@ -151,6 +158,7 @@ class Field {
       soilBiological: soilBiological ?? this.soilBiological,
       soilChemical: soilChemical ?? this.soilChemical,
       soilNotes: soilNotes ?? this.soilNotes,
+      useChemical: useChemical ?? this.useChemical,
       farmingMethod: farmingMethod ?? this.farmingMethod,
       farmingMethodNotes: farmingMethodNotes ?? this.farmingMethodNotes,
       climateZone: climateZone ?? this.climateZone,
