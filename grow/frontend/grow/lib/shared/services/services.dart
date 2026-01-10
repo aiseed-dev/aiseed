@@ -6,5 +6,6 @@
 /// ```
 library;
 
+export 'field_repository.dart';
 export 'plant_repository.dart';
 export 'observation_repository.dart';

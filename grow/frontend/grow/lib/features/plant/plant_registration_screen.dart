@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import '../../shared/theme/colors.dart';
 import '../../shared/models/models.dart';
-import '../../shared/data/ai_research_prompts.dart';
 import '../../shared/services/plant_repository.dart';
-import '../ai_research/widgets/ai_research_hint.dart';
-import 'widgets/farming_method_selector.dart';
-import 'widgets/soil_type_selector.dart';
+import '../../shared/services/field_repository.dart';
+import '../field/field_registration_screen.dart';
 
 /// 植物登録画面
 ///
 /// 責務: 新しい植物の登録フォームを表示・処理
+/// 農法・土壌は畑側で設定するため、ここでは植物固有の情報のみ
 class PlantRegistrationScreen extends StatefulWidget {
-  const PlantRegistrationScreen({super.key});
+  final Field? preselectedField;  // 畑が事前に選択されている場合
+
+  const PlantRegistrationScreen({super.key, this.preselectedField});
 
   @override
   State<PlantRegistrationScreen> createState() => _PlantRegistrationScreenState();
@@ -21,21 +22,51 @@ class _PlantRegistrationScreenState extends State<PlantRegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _varietyController = TextEditingController();
-  final _locationController = TextEditingController();
-  final _soilNotesController = TextEditingController();
+  final _notesController = TextEditingController();
 
-  FarmingMethod _selectedFarmingMethod = FarmingMethod.naturalCultivation;
-  SoilType? _selectedSoilType;
+  final FieldRepository _fieldRepository = FieldRepository();
+
+  List<Field> _fields = [];
+  Field? _selectedField;
   DateTime _plantedAt = DateTime.now();
-
   bool _isLoading = false;
+  bool _isLoadingFields = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFields();
+  }
+
+  Future<void> _loadFields() async {
+    setState(() {
+      _isLoadingFields = true;
+    });
+
+    try {
+      final fields = await _fieldRepository.getAll();
+      if (mounted) {
+        setState(() {
+          _fields = fields;
+          _selectedField = widget.preselectedField ??
+              (fields.isNotEmpty ? fields.first : null);
+          _isLoadingFields = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingFields = false;
+        });
+      }
+    }
+  }
 
   @override
   void dispose() {
     _nameController.dispose();
     _varietyController.dispose();
-    _locationController.dispose();
-    _soilNotesController.dispose();
+    _notesController.dispose();
     super.dispose();
   }
 
@@ -49,132 +80,263 @@ class _PlantRegistrationScreenState extends State<PlantRegistrationScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // AIリサーチバナー
-            AIResearchBanner(
-              title: 'AIで栽培情報を調べる',
-              subtitle: '土壌や育て方をAIで調べてみましょう',
-              initialValues: {
-                'plant': _nameController.text,
-                'location': _locationController.text,
-              },
-            ),
-            const SizedBox(height: 24),
+      body: _isLoadingFields
+          ? const Center(child: CircularProgressIndicator())
+          : Form(
+              key: _formKey,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  // 畑が未登録の場合の案内
+                  if (_fields.isEmpty) ...[
+                    _buildNoFieldsCard(),
+                    const SizedBox(height: 24),
+                  ] else ...[
+                    // 畑選択
+                    _buildSectionTitle('畑を選択', required: true),
+                    const SizedBox(height: 8),
+                    _buildFieldSelector(),
+                    const SizedBox(height: 24),
+                  ],
 
-            // 植物名（必須）
-            _buildSectionTitle('植物名', required: true),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                hintText: '例: ミニトマト',
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return '植物名を入力してください';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 24),
+                  // 植物名（必須）
+                  _buildSectionTitle('植物名', required: true),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      hintText: '例: ミニトマト、バジル、きゅうり',
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return '植物名を入力してください';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 24),
 
-            // 品種（任意）
-            _buildSectionTitle('品種'),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _varietyController,
-              decoration: const InputDecoration(
-                hintText: '例: アイコ',
-              ),
-            ),
-            const SizedBox(height: 24),
+                  // 品種（任意）
+                  _buildSectionTitle('品種'),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _varietyController,
+                    decoration: const InputDecoration(
+                      hintText: '例: アイコ、スイートバジル',
+                    ),
+                  ),
+                  const SizedBox(height: 24),
 
-            // 栽培場所（任意）
-            _buildSectionTitle('栽培場所'),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _locationController,
-              decoration: const InputDecoration(
-                hintText: '例: ベランダ、畑、プランター',
-              ),
-            ),
-            const SizedBox(height: 24),
+                  // 栽培開始日
+                  _buildSectionTitle('栽培開始日'),
+                  const SizedBox(height: 8),
+                  _buildDateSelector(),
+                  const SizedBox(height: 24),
 
-            // 農法（必須）
-            _buildSectionTitle('農法', required: true),
-            const SizedBox(height: 8),
-            FarmingMethodSelector(
-              selectedMethod: _selectedFarmingMethod,
-              onChanged: (method) {
-                setState(() {
-                  _selectedFarmingMethod = method;
-                });
-              },
-            ),
-            const SizedBox(height: 24),
+                  // メモ（任意）
+                  _buildSectionTitle('メモ'),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _notesController,
+                    decoration: const InputDecoration(
+                      hintText: '種の購入先、特記事項など',
+                    ),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 32),
 
-            // 土壌（任意）
-            _buildSectionTitle('土壌'),
-            const SizedBox(height: 8),
-            AIResearchHint(
-              hintText: 'わからない場合はAIで調べる',
-              category: ResearchCategory.soil,
-              initialValues: {
-                'location': _locationController.text,
-              },
-            ),
-            const SizedBox(height: 12),
-            SoilTypeSelector(
-              selectedSoilType: _selectedSoilType,
-              onChanged: (soilType) {
-                setState(() {
-                  _selectedSoilType = soilType;
-                });
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _soilNotesController,
-              decoration: const InputDecoration(
-                hintText: '土壌についてのメモ（任意）',
-              ),
-              maxLines: 2,
-            ),
-            const SizedBox(height: 24),
-
-            // 栽培開始日
-            _buildSectionTitle('栽培開始日'),
-            const SizedBox(height: 8),
-            _buildDateSelector(),
-            const SizedBox(height: 32),
-
-            // 登録ボタン
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _handleSubmit,
-                child: _isLoading
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text('登録する'),
+                  // 登録ボタン
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: _isLoading || (_fields.isEmpty && _selectedField == null)
+                          ? null
+                          : _handleSubmit,
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text('登録する'),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
-          ],
-        ),
+    );
+  }
+
+  Widget _buildNoFieldsCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: GrowColors.paleGreen,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: GrowColors.youngLeaf),
+      ),
+      child: Column(
+        children: [
+          const Text('🌾', style: TextStyle(fontSize: 48)),
+          const SizedBox(height: 12),
+          Text(
+            'まず畑を登録しましょう',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '畑には農法や土壌の情報を設定できます。\nベランダ、プランター、庭なども「畑」として登録できます。',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: GrowColors.deepGreen,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: _navigateToFieldRegistration,
+            icon: const Icon(Icons.add),
+            label: const Text('畑を登録する'),
+          ),
+        ],
       ),
     );
+  }
+
+  Widget _buildFieldSelector() {
+    return Column(
+      children: [
+        // 畑選択ドロップダウン
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: GrowColors.lightSoil),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<Field>(
+              value: _selectedField,
+              isExpanded: true,
+              hint: const Text('畑を選択'),
+              items: _fields.map((field) {
+                return DropdownMenuItem<Field>(
+                  value: field,
+                  child: Row(
+                    children: [
+                      const Text('🌾', style: TextStyle(fontSize: 16)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(field.name),
+                            if (field.address != null)
+                              Text(
+                                field.address!,
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: GrowColors.drySoil,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+              onChanged: (Field? newValue) {
+                setState(() {
+                  _selectedField = newValue;
+                });
+              },
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        // 新しい畑を追加
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: _navigateToFieldRegistration,
+            icon: const Icon(Icons.add, size: 16),
+            label: const Text('新しい畑を追加'),
+          ),
+        ),
+        // 選択中の畑情報
+        if (_selectedField != null) ...[
+          const SizedBox(height: 8),
+          _buildSelectedFieldInfo(),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSelectedFieldInfo() {
+    final field = _selectedField!;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: GrowColors.paleSoil,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.eco, size: 16, color: GrowColors.deepGreen),
+              const SizedBox(width: 4),
+              Text(
+                field.farmingMethod.nameJa,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: GrowColors.deepGreen,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          if (field.soilType != null) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Text('🪴', style: TextStyle(fontSize: 12)),
+                const SizedBox(width: 4),
+                Text(
+                  field.soilType!.nameJa,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: GrowColors.drySoil,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _navigateToFieldRegistration() async {
+    final result = await Navigator.push<Field>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const FieldRegistrationScreen(),
+      ),
+    );
+
+    if (result != null) {
+      await _loadFields();
+      setState(() {
+        _selectedField = result;
+      });
+    }
   }
 
   Widget _buildSectionTitle(String title, {bool required = false}) {
@@ -257,6 +419,16 @@ class _PlantRegistrationScreenState extends State<PlantRegistrationScreen> {
       return;
     }
 
+    if (_selectedField == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('畑を選択してください'),
+          backgroundColor: GrowColors.error,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -264,13 +436,11 @@ class _PlantRegistrationScreenState extends State<PlantRegistrationScreen> {
     try {
       final now = DateTime.now();
       final plant = Plant(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        id: now.millisecondsSinceEpoch.toString(),
+        fieldId: _selectedField!.id,
         name: _nameController.text,
         variety: _varietyController.text.isNotEmpty ? _varietyController.text : null,
-        location: _locationController.text.isNotEmpty ? _locationController.text : null,
-        farmingMethod: _selectedFarmingMethod,
-        soilType: _selectedSoilType,
-        soilNotes: _soilNotesController.text.isNotEmpty ? _soilNotesController.text : null,
+        notes: _notesController.text.isNotEmpty ? _notesController.text : null,
         plantedAt: _plantedAt,
         createdAt: now,
         updatedAt: now,
