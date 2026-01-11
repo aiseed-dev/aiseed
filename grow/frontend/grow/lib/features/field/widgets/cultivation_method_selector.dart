@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../shared/theme/colors.dart';
 import '../../../shared/models/farming_method.dart';
+import '../cultivation_method_detail_screen.dart';
 
 /// 栽培方法の段階的選択ウィジェット
 ///
@@ -93,6 +94,10 @@ class _CultivationMethodSelectorState extends State<CultivationMethodSelector> {
     return Row(
       children: CultivationCategory.values.map((category) {
         final isSelected = category == _selectedCategory;
+        // 慣行栽培の場合は詳細ページへのリンクを表示
+        final detailMethod = category == CultivationCategory.chemical
+            ? CultivationMethod.conventional
+            : null;
         return Expanded(
           child: Padding(
             padding: EdgeInsets.only(
@@ -103,6 +108,9 @@ class _CultivationMethodSelectorState extends State<CultivationMethodSelector> {
               label: category.nameJa,
               isSelected: isSelected,
               onTap: () => _onCategoryChanged(category),
+              onInfoTap: detailMethod != null
+                  ? () => _showMethodDetail(context, detailMethod)
+                  : null,
             ),
           ),
         );
@@ -114,6 +122,10 @@ class _CultivationMethodSelectorState extends State<CultivationMethodSelector> {
     return Row(
       children: CultivationType.values.map((type) {
         final isSelected = type == _selectedType;
+        // 有機栽培の場合は詳細ページへのリンク用メソッドを取得
+        final detailMethod = type == CultivationType.organic
+            ? CultivationMethod.organic
+            : null;
         return Expanded(
           child: Padding(
             padding: EdgeInsets.only(
@@ -125,6 +137,9 @@ class _CultivationMethodSelectorState extends State<CultivationMethodSelector> {
               subtitle: type.description,
               isSelected: isSelected,
               onTap: () => _onTypeChanged(type),
+              onInfoTap: detailMethod != null
+                  ? () => _showMethodDetail(context, detailMethod)
+                  : null,
             ),
           ),
         );
@@ -163,11 +178,28 @@ class _CultivationMethodSelectorState extends State<CultivationMethodSelector> {
                     fontSize: 13,
                   ),
                 ),
+                const SizedBox(width: 4),
+                GestureDetector(
+                  onTap: () => _showMethodDetail(context, method),
+                  child: Icon(
+                    Icons.info_outline,
+                    size: 16,
+                    color: isSelected ? Colors.white70 : GrowColors.drySoil,
+                  ),
+                ),
               ],
             ),
           ),
         );
       }).toList(),
+    );
+  }
+
+  void _showMethodDetail(BuildContext context, CultivationMethod method) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => CultivationMethodDetailScreen(method: method),
+      ),
     );
   }
 
@@ -177,6 +209,7 @@ class _CultivationMethodSelectorState extends State<CultivationMethodSelector> {
     String? subtitle,
     required bool isSelected,
     required VoidCallback onTap,
+    VoidCallback? onInfoTap,
   }) {
     return GestureDetector(
       onTap: onTap,
@@ -190,30 +223,50 @@ class _CultivationMethodSelectorState extends State<CultivationMethodSelector> {
             width: isSelected ? 2 : 1,
           ),
         ),
-        child: Column(
+        child: Stack(
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 24)),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected ? Colors.white : GrowColors.darkSoil,
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            if (subtitle != null) ...[
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  color: isSelected ? Colors.white70 : GrowColors.drySoil,
-                  fontSize: 10,
+            Column(
+              children: [
+                Text(emoji, style: const TextStyle(fontSize: 24)),
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : GrowColors.darkSoil,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                textAlign: TextAlign.center,
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white70 : GrowColors.drySoil,
+                      fontSize: 10,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ],
+            ),
+            if (onInfoTap != null)
+              Positioned(
+                top: -4,
+                right: -4,
+                child: GestureDetector(
+                  onTap: onInfoTap,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    child: Icon(
+                      Icons.info_outline,
+                      size: 16,
+                      color: isSelected ? Colors.white70 : GrowColors.drySoil,
+                    ),
+                  ),
+                ),
               ),
-            ],
           ],
         ),
       ),
