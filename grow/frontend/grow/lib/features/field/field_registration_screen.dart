@@ -4,12 +4,13 @@ import '../../shared/models/models.dart';
 import '../../shared/data/ai_research_prompts.dart';
 import '../../shared/services/field_repository.dart';
 import '../ai_research/widgets/ai_research_hint.dart';
-import '../plant/widgets/farming_method_selector.dart';
 import '../plant/widgets/soil_type_selector.dart';
+import 'widgets/place_type_selector.dart';
+import 'widgets/cultivation_method_selector.dart';
 
-/// 畑（栽培場所）登録画面
+/// 栽培場所登録画面
 ///
-/// 責務: 新しい畑の登録フォームを表示・処理
+/// 責務: 新しい栽培場所の登録フォームを表示・処理
 class FieldRegistrationScreen extends StatefulWidget {
   final Field? existingField;  // 編集時は既存データを渡す
 
@@ -29,11 +30,13 @@ class _FieldRegistrationScreenState extends State<FieldRegistrationScreen> {
   final _soilNotesController = TextEditingController();
   final _farmingNotesController = TextEditingController();
 
-  FarmingMethod _selectedFarmingMethod = FarmingMethod.naturalCultivation;
+  PlaceType _selectedPlaceType = PlaceType.ground;
+  FarmingMethod? _selectedFarmingMethod;
   SoilType? _selectedSoilType;
 
   bool _isLoading = false;
   bool get _isEditing => widget.existingField != null;
+  bool get _showFarmingMethod => _selectedPlaceType.requiresFarmingMethod;
 
   @override
   void initState() {
@@ -52,6 +55,7 @@ class _FieldRegistrationScreenState extends State<FieldRegistrationScreen> {
     _soilChemicalController.text = field.soilChemical ?? '';
     _soilNotesController.text = field.soilNotes ?? '';
     _farmingNotesController.text = field.farmingMethodNotes ?? '';
+    _selectedPlaceType = field.placeType;
     _selectedFarmingMethod = field.farmingMethod;
     _selectedSoilType = field.soilType;
   }
@@ -72,7 +76,7 @@ class _FieldRegistrationScreenState extends State<FieldRegistrationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? '畑を編集' : '畑を登録'),
+        title: Text(_isEditing ? '栽培場所を編集' : '栽培場所を登録'),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.pop(context),
@@ -92,14 +96,14 @@ class _FieldRegistrationScreenState extends State<FieldRegistrationScreen> {
               ),
               child: Row(
                 children: [
-                  const Text('🌾', style: TextStyle(fontSize: 32)),
+                  Text(_selectedPlaceType.emoji, style: const TextStyle(fontSize: 32)),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '畑を登録しましょう',
+                          '栽培場所を登録しましょう',
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
@@ -119,17 +123,37 @@ class _FieldRegistrationScreenState extends State<FieldRegistrationScreen> {
             ),
             const SizedBox(height: 24),
 
-            // 畑の名前（必須）
-            _buildSectionTitle('畑の名前', required: true),
+            // 栽培場所タイプ（必須）
+            _buildSectionTitle('栽培場所タイプ', required: true),
+            const SizedBox(height: 8),
+            PlaceTypeSelector(
+              selectedType: _selectedPlaceType,
+              onChanged: (type) {
+                setState(() {
+                  _selectedPlaceType = type;
+                  // 畑以外の場合は農法をクリア
+                  if (!type.requiresFarmingMethod) {
+                    _selectedFarmingMethod = null;
+                  } else if (_selectedFarmingMethod == null) {
+                    // 畑を選択したらデフォルトの農法を設定
+                    _selectedFarmingMethod = FarmingMethod.naturalCultivation;
+                  }
+                });
+              },
+            ),
+            const SizedBox(height: 24),
+
+            // 栽培場所の名前（必須）
+            _buildSectionTitle('名前', required: true),
             const SizedBox(height: 8),
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(
-                hintText: '例: ベランダ、畑A、プランター',
+              decoration: InputDecoration(
+                hintText: '例: ${_selectedPlaceType.nameJa}A、メインの${_selectedPlaceType.nameJa}',
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return '畑の名前を入力してください';
+                  return '名前を入力してください';
                 }
                 return null;
               },
@@ -155,30 +179,33 @@ class _FieldRegistrationScreenState extends State<FieldRegistrationScreen> {
             ),
             const SizedBox(height: 24),
 
-            // 区切り線
-            const Divider(),
-            const SizedBox(height: 16),
+            // 栽培方法セクション（地植えの場合のみ表示）
+            if (_showFarmingMethod) ...[
+              // 区切り線
+              const Divider(),
+              const SizedBox(height: 16),
 
-            // 農法（必須）
-            _buildSectionTitle('農法', required: true),
-            const SizedBox(height: 8),
-            FarmingMethodSelector(
-              selectedMethod: _selectedFarmingMethod,
-              onChanged: (method) {
-                setState(() {
-                  _selectedFarmingMethod = method;
-                });
-              },
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _farmingNotesController,
-              decoration: const InputDecoration(
-                hintText: '農法についてのメモ（任意）',
+              // 栽培方法
+              _buildSectionTitle('栽培方法'),
+              const SizedBox(height: 8),
+              CultivationMethodSelector(
+                selectedMethod: _selectedFarmingMethod,
+                onChanged: (method) {
+                  setState(() {
+                    _selectedFarmingMethod = method;
+                  });
+                },
               ),
-              maxLines: 2,
-            ),
-            const SizedBox(height: 24),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _farmingNotesController,
+                decoration: const InputDecoration(
+                  hintText: '栽培方法についてのメモ（任意）',
+                ),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 24),
+            ],
 
             // 区切り線
             const Divider(),
@@ -192,7 +219,8 @@ class _FieldRegistrationScreenState extends State<FieldRegistrationScreen> {
               category: ResearchCategory.soil,
               initialValues: {
                 'location': _addressController.text,
-                'farming_method': _selectedFarmingMethod.nameJa,
+                if (_selectedFarmingMethod != null)
+                  'farming_method': _selectedFarmingMethod!.nameJa,
               },
             ),
             const SizedBox(height: 16),
@@ -350,6 +378,7 @@ class _FieldRegistrationScreenState extends State<FieldRegistrationScreen> {
       final field = Field(
         id: widget.existingField?.id ?? now.millisecondsSinceEpoch.toString(),
         name: _nameController.text,
+        placeType: _selectedPlaceType,
         address: _addressController.text.isNotEmpty ? _addressController.text : null,
         soilType: _selectedSoilType,
         soilPhysical: _soilPhysicalController.text.isNotEmpty ? _soilPhysicalController.text : null,

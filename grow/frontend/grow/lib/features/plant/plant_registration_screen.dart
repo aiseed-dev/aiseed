@@ -87,13 +87,13 @@ class _PlantRegistrationScreenState extends State<PlantRegistrationScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  // 畑が未登録の場合の案内
+                  // 栽培場所が未登録の場合の案内
                   if (_fields.isEmpty) ...[
                     _buildNoFieldsCard(),
                     const SizedBox(height: 24),
                   ] else ...[
-                    // 畑選択
-                    _buildSectionTitle('畑を選択', required: true),
+                    // 栽培場所選択
+                    _buildSectionTitle('栽培場所を選択', required: true),
                     const SizedBox(height: 8),
                     _buildFieldSelector(),
                     const SizedBox(height: 24),
@@ -182,17 +182,17 @@ class _PlantRegistrationScreenState extends State<PlantRegistrationScreen> {
       ),
       child: Column(
         children: [
-          const Text('🌾', style: TextStyle(fontSize: 48)),
+          const Text('🌱', style: TextStyle(fontSize: 48)),
           const SizedBox(height: 12),
           Text(
-            'まず畑を登録しましょう',
+            'まず栽培場所を登録しましょう',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            '畑には農法や土壌の情報を設定できます。\nベランダ、プランター、庭なども「畑」として登録できます。',
+            'ベランダ、プランター、畑など\n栽培場所ごとに設定できます。',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: GrowColors.deepGreen,
             ),
@@ -202,7 +202,7 @@ class _PlantRegistrationScreenState extends State<PlantRegistrationScreen> {
           ElevatedButton.icon(
             onPressed: _navigateToFieldRegistration,
             icon: const Icon(Icons.add),
-            label: const Text('畑を登録する'),
+            label: const Text('栽培場所を登録する'),
           ),
         ],
       ),
@@ -212,7 +212,7 @@ class _PlantRegistrationScreenState extends State<PlantRegistrationScreen> {
   Widget _buildFieldSelector() {
     return Column(
       children: [
-        // 畑選択ドロップダウン
+        // 栽培場所選択ドロップダウン
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
@@ -224,13 +224,13 @@ class _PlantRegistrationScreenState extends State<PlantRegistrationScreen> {
             child: DropdownButton<Field>(
               value: _selectedField,
               isExpanded: true,
-              hint: const Text('畑を選択'),
+              hint: const Text('栽培場所を選択'),
               items: _fields.map((field) {
                 return DropdownMenuItem<Field>(
                   value: field,
                   child: Row(
                     children: [
-                      const Text('🌾', style: TextStyle(fontSize: 16)),
+                      Text(field.placeType.emoji, style: const TextStyle(fontSize: 16)),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Column(
@@ -261,16 +261,16 @@ class _PlantRegistrationScreenState extends State<PlantRegistrationScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        // 新しい畑を追加
+        // 新しい栽培場所を追加
         Align(
           alignment: Alignment.centerRight,
           child: TextButton.icon(
             onPressed: _navigateToFieldRegistration,
             icon: const Icon(Icons.add, size: 16),
-            label: const Text('新しい畑を追加'),
+            label: const Text('新しい栽培場所を追加'),
           ),
         ),
-        // 選択中の畑情報
+        // 選択中の栽培場所情報
         if (_selectedField != null) ...[
           const SizedBox(height: 8),
           _buildSelectedFieldInfo(),
@@ -292,10 +292,10 @@ class _PlantRegistrationScreenState extends State<PlantRegistrationScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.eco, size: 16, color: GrowColors.deepGreen),
+              Text(field.placeType.emoji, style: const TextStyle(fontSize: 12)),
               const SizedBox(width: 4),
               Text(
-                field.farmingMethod.nameJa,
+                field.placeType.nameJa,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: GrowColors.deepGreen,
                   fontWeight: FontWeight.w500,
@@ -303,6 +303,21 @@ class _PlantRegistrationScreenState extends State<PlantRegistrationScreen> {
               ),
             ],
           ),
+          if (field.farmingMethod != null) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Text(field.farmingMethod!.emoji, style: const TextStyle(fontSize: 12)),
+                const SizedBox(width: 4),
+                Text(
+                  field.farmingMethod!.nameJa,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: GrowColors.deepGreen,
+                  ),
+                ),
+              ],
+            ),
+          ],
           if (field.soilType != null) ...[
             const SizedBox(height: 4),
             Row(
@@ -422,7 +437,7 @@ class _PlantRegistrationScreenState extends State<PlantRegistrationScreen> {
     if (_selectedField == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('畑を選択してください'),
+          content: Text('栽培場所を選択してください'),
           backgroundColor: GrowColors.error,
         ),
       );

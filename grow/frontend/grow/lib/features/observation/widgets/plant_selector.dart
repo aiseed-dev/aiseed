@@ -242,7 +242,7 @@ class _PlantPickerSheet extends StatelessWidget {
         id: '3',
         name: 'きゅうり',
         variety: '夏すずみ',
-        location: '畑',
+        location: '庭',
         farmingMethodOverride: FarmingMethod.carbonCyclingFarming,
         plantedAt: now.subtract(const Duration(days: 30)),
         createdAt: now.subtract(const Duration(days: 30)),

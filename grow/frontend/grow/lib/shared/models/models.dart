@@ -7,6 +7,7 @@
 library;
 
 export 'farming_method.dart';
+export 'place_type.dart';
 export 'soil_type.dart';
 export 'weather.dart';
 export 'field.dart';

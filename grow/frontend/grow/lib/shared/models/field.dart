@@ -1,27 +1,35 @@
 import 'farming_method.dart';
+import 'place_type.dart';
 import 'soil_type.dart';
 
-/// 畑（栽培場所）モデル
+/// 栽培場所モデル
 ///
-/// 責務: ベランダ、畑、プランターなどの栽培場所を表す
+/// 責務: 畑・庭、プランター、その他の栽培場所を表す
 class Field {
   final String id;
-  final String name;  // 例: ベランダ、畑A、プランター
+  final String name;  // 例: メインの畑、ベランダのプランター
+
+  // 栽培場所タイプ
+  final PlaceType placeType;
+  final String? placeTypeDescription;  // その他の場合の説明（水耕栽培など）
 
   // 位置情報
   final String? address;  // 住所（表示用）
   final double? latitude;
   final double? longitude;
 
-  // 土壌情報（3要素）
+  // 土壌情報（3要素）- 地植え・プランターの場合
   final SoilType? soilType;
   final String? soilPhysical;  // 物理性メモ
   final String? soilBiological;  // 生物性メモ
   final String? soilChemical;  // 化学性メモ
   final String? soilNotes;  // その他メモ
 
-  // 農法
-  final FarmingMethod farmingMethod;
+  // 農法関連
+  // - プランター・鉢: useChemicalのみ使用（true=化学肥料・農薬を使う）
+  // - 畑・庭（地植え）: farmingMethod（有機 or 自然系の詳細）を使用
+  final bool? useChemical;  // 化学肥料・農薬を使うか（プランター用）
+  final FarmingMethod? farmingMethod;  // 具体的な農法（地植え用）
   final String? farmingMethodNotes;
 
   // 気候データ（API取得結果をキャッシュ）
@@ -36,6 +44,8 @@ class Field {
   const Field({
     required this.id,
     required this.name,
+    required this.placeType,
+    this.placeTypeDescription,
     this.address,
     this.latitude,
     this.longitude,
@@ -44,7 +54,8 @@ class Field {
     this.soilBiological,
     this.soilChemical,
     this.soilNotes,
-    required this.farmingMethod,
+    this.useChemical,
+    this.farmingMethod,
     this.farmingMethodNotes,
     this.climateZone,
     this.lastFrostDate,
@@ -58,6 +69,10 @@ class Field {
     return Field(
       id: json['id'] as String,
       name: json['name'] as String,
+      placeType: json['place_type'] != null
+          ? PlaceType.fromId(json['place_type'] as String)
+          : PlaceType.other,
+      placeTypeDescription: json['place_type_description'] as String?,
       address: json['address'] as String?,
       latitude: json['latitude'] as double?,
       longitude: json['longitude'] as double?,
@@ -68,7 +83,10 @@ class Field {
       soilBiological: json['soil_biological'] as String?,
       soilChemical: json['soil_chemical'] as String?,
       soilNotes: json['soil_notes'] as String?,
-      farmingMethod: FarmingMethod.fromId(json['farming_method'] as String),
+      useChemical: json['use_chemical'] as bool?,
+      farmingMethod: json['farming_method'] != null
+          ? FarmingMethod.fromId(json['farming_method'] as String)
+          : null,
       farmingMethodNotes: json['farming_method_notes'] as String?,
       climateZone: json['climate_zone'] as String?,
       lastFrostDate: json['last_frost_date'] as String?,
@@ -83,6 +101,8 @@ class Field {
     return {
       'id': id,
       'name': name,
+      'place_type': placeType.id,
+      'place_type_description': placeTypeDescription,
       'address': address,
       'latitude': latitude,
       'longitude': longitude,
@@ -91,7 +111,8 @@ class Field {
       'soil_biological': soilBiological,
       'soil_chemical': soilChemical,
       'soil_notes': soilNotes,
-      'farming_method': farmingMethod.id,
+      'use_chemical': useChemical,
+      'farming_method': farmingMethod?.id,
       'farming_method_notes': farmingMethodNotes,
       'climate_zone': climateZone,
       'last_frost_date': lastFrostDate,
@@ -105,6 +126,8 @@ class Field {
   Field copyWith({
     String? id,
     String? name,
+    PlaceType? placeType,
+    String? placeTypeDescription,
     String? address,
     double? latitude,
     double? longitude,
@@ -113,6 +136,7 @@ class Field {
     String? soilBiological,
     String? soilChemical,
     String? soilNotes,
+    bool? useChemical,
     FarmingMethod? farmingMethod,
     String? farmingMethodNotes,
     String? climateZone,
@@ -124,6 +148,8 @@ class Field {
     return Field(
       id: id ?? this.id,
       name: name ?? this.name,
+      placeType: placeType ?? this.placeType,
+      placeTypeDescription: placeTypeDescription ?? this.placeTypeDescription,
       address: address ?? this.address,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
@@ -132,6 +158,7 @@ class Field {
       soilBiological: soilBiological ?? this.soilBiological,
       soilChemical: soilChemical ?? this.soilChemical,
       soilNotes: soilNotes ?? this.soilNotes,
+      useChemical: useChemical ?? this.useChemical,
       farmingMethod: farmingMethod ?? this.farmingMethod,
       farmingMethodNotes: farmingMethodNotes ?? this.farmingMethodNotes,
       climateZone: climateZone ?? this.climateZone,
