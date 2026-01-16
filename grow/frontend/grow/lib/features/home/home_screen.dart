@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../shared/theme/colors.dart';
 import '../observation/observation_recording_screen.dart';
 import '../hp_builder/hp_builder_screen.dart';
+import '../settings/settings_screen.dart';
 import 'widgets/greeting_section.dart';
 import 'widgets/plants_section.dart';
 import 'widgets/recent_observations_section.dart';
@@ -270,6 +271,20 @@ class _HomeScreenState extends State<HomeScreen> {
             onTap: () {
               Navigator.pop(context);
               // TODO: AIリサーチガイド画面へ
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.settings),
+            title: const Text('設定'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SettingsScreen(),
+                ),
+              );
             },
           ),
         ],
