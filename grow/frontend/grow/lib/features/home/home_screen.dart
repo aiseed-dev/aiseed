@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../shared/theme/colors.dart';
 import '../observation/observation_recording_screen.dart';
+import '../hp_builder/hp_builder_screen.dart';
 import 'widgets/greeting_section.dart';
 import 'widgets/plants_section.dart';
 import 'widgets/recent_observations_section.dart';
@@ -18,14 +19,18 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
+      drawer: _buildDrawer(context),
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.menu),
           onPressed: () {
-            // TODO: メニュー表示
+            _scaffoldKey.currentState?.openDrawer();
           },
         ),
         title: Row(
@@ -188,6 +193,86 @@ class _HomeScreenState extends State<HomeScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => const ObservationRecordingScreen(),
+      ),
+    );
+  }
+
+  Widget _buildDrawer(BuildContext context) {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: const BoxDecoration(
+              color: GrowColors.deepGreen,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                const Icon(
+                  Icons.eco,
+                  color: Colors.white,
+                  size: 48,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Grow',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  '栽培記録アプリ',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.white70,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.home),
+            title: const Text('ホーム'),
+            onTap: () {
+              Navigator.pop(context);
+            },
+          ),
+          const Divider(),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text(
+              'ツール',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: GrowColors.darkSoil,
+              ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.web),
+            title: const Text('ホームページ作成'),
+            subtitle: const Text('音声でHPを作成'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const HpBuilderScreen(),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.psychology),
+            title: const Text('AIリサーチガイド'),
+            subtitle: const Text('栽培の質問を作成'),
+            onTap: () {
+              Navigator.pop(context);
+              // TODO: AIリサーチガイド画面へ
+            },
+          ),
+        ],
       ),
     );
   }
