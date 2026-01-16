@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>aiseed プラットフォーム概念図（拡張版）</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2d5a27;
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 2rem;
+        }
+
+        .diagram {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        /* コンセプト */
+        .concept {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: linear-gradient(135deg, #fff8e7 0%, #fff3d6 100%);
+            border-radius: 12px;
+            border-left: 5px solid #d4a853;
+        }
+
+        .concept-text {
+            font-size: 1.2rem;
+            color: #8b7355;
+            font-weight: 500;
+        }
+
+        .concept-sub {
+            font-size: 0.9rem;
+            color: #a08060;
+            margin-top: 0.5rem;
+        }
+
+        /* ユーザー層 */
+        .users {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .user-group {
+            background: #fff8e7;
+            border: 2px solid #d4a853;
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .user-icon {
+            font-size: 2rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .user-label {
+            font-weight: 500;
+            color: #8b7355;
+        }
+
+        /* 矢印 */
+        .arrows {
+            display: flex;
+            justify-content: center;
+            margin: 1rem 0;
+            color: #2d5a27;
+            font-size: 1.5rem;
+        }
+
+        .arrow-label {
+            font-size: 0.75rem;
+            color: #666;
+            text-align: center;
+            margin-top: -0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* 統合プラットフォーム */
+        .platform {
+            background: linear-gradient(135deg, #2d5a27 0%, #4a7c42 100%);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            color: white;
+        }
+
+        .platform-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 0.3rem;
+        }
+
+        .platform-subtitle {
+            text-align: center;
+            opacity: 0.9;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .platform-features {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .platform-feature {
+            background: rgba(255,255,255,0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+
+        /* API層 */
+        .api-layer {
+            background: #e8f5e9;
+            border: 2px dashed #4a7c42;
+            border-radius: 12px;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            text-align: center;
+        }
+
+        .api-title {
+            font-weight: 500;
+            color: #2d5a27;
+            margin-bottom: 0.5rem;
+        }
+
+        .api-items {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            font-size: 0.85rem;
+            color: #555;
+        }
+
+        /* カテゴリ別セクション */
+        .categories {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .category {
+            border: 2px solid #ddd;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .category-header {
+            padding: 1rem;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .category-farmers .category-header {
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            color: #2d5a27;
+        }
+
+        .category-shops .category-header {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            color: #1565c0;
+        }
+
+        .category-body {
+            padding: 1rem;
+        }
+
+        .category-desc {
+            font-size: 0.85rem;
+            color: #666;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .shops-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.8rem;
+        }
+
+        .shop-item {
+            background: #f9f9f9;
+            border-radius: 10px;
+            padding: 0.8rem;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .shop-item:hover {
+            background: #f0f0f0;
+            transform: translateY(-2px);
+        }
+
+        .shop-icon {
+            font-size: 1.8rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .shop-name {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .shop-example {
+            font-size: 0.7rem;
+            color: #888;
+        }
+
+        /* 共通機能 */
+        .common-features {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: #fafafa;
+            border-radius: 12px;
+        }
+
+        .common-title {
+            text-align: center;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 1rem;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+        }
+
+        .feature-item {
+            text-align: center;
+            padding: 1rem;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-name {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .feature-desc {
+            font-size: 0.75rem;
+            color: #888;
+            margin-top: 0.3rem;
+        }
+
+        /* QRフロー */
+        .qr-section {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #eee;
+        }
+
+        .qr-title {
+            text-align: center;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 1rem;
+        }
+
+        .qr-flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+        }
+
+        .qr-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .qr-icon {
+            width: 55px;
+            height: 55px;
+            background: #f5f5f5;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+        }
+
+        .qr-label {
+            font-size: 0.75rem;
+            color: #666;
+            text-align: center;
+        }
+
+        .qr-arrow {
+            color: #ccc;
+            font-size: 1.2rem;
+        }
+
+        /* 例 */
+        .examples {
+            margin-top: 1.5rem;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+
+        .example-card {
+            background: #f9f9f9;
+            border-radius: 10px;
+            padding: 1rem;
+            font-size: 0.8rem;
+        }
+
+        .example-title {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .example-content {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        /* 凡例 */
+        .legend {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: #f9f9f9;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+
+        @media (max-width: 800px) {
+            .categories {
+                grid-template-columns: 1fr;
+            }
+
+            .features-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .examples {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 1rem;
+            }
+
+            .diagram {
+                padding: 1rem;
+            }
+
+            .qr-flow {
+                flex-direction: column;
+            }
+
+            .qr-arrow {
+                transform: rotate(90deg);
+            }
+
+            .shops-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌱 aiseed プラットフォーム概念図</h1>
+        <p class="subtitle">拡張版：農家 ＋ 小さなお店</p>
+
+        <div class="diagram">
+            <!-- コンセプト -->
+            <div class="concept">
+                <div class="concept-text">
+                    「つくり手のこだわり・ストーリー」を<br>
+                    QRコードで届けるプラットフォーム
+                </div>
+                <div class="concept-sub">
+                    小さな種（ビジネス）を育てる = aiseed
+                </div>
+            </div>
+
+            <!-- ユーザー層 -->
+            <div class="users">
+                <div class="user-group">
+                    <div class="user-icon">👨‍👩‍👧‍👦</div>
+                    <div class="user-label">消費者</div>
+                </div>
+                <div class="user-group">
+                    <div class="user-icon">🍽️</div>
+                    <div class="user-label">飲食店</div>
+                </div>
+                <div class="user-group">
+                    <div class="user-icon">🏢</div>
+                    <div class="user-label">企業・バイヤー</div>
+                </div>
+                <div class="user-group">
+                    <div class="user-icon">📱</div>
+                    <div class="user-label">観光客</div>
+                </div>
+            </div>
+
+            <div class="arrows">↓ ↑</div>
+            <div class="arrow-label">検索・フォロー・情報取得</div>
+
+            <!-- 統合プラットフォーム -->
+            <div class="platform">
+                <div class="platform-title">🌍 aiseed 統合プラットフォーム</div>
+                <div class="platform-subtitle">つくり手と届け先をつなぐ</div>
+                <div class="platform-features">
+                    <span class="platform-feature">🔍 お店を探す</span>
+                    <span class="platform-feature">📍 近くのお店</span>
+                    <span class="platform-feature">🏷️ カテゴリ検索</span>
+                    <span class="platform-feature">⭐ お気に入り</span>
+                    <span class="platform-feature">📰 新着情報</span>
+                    <span class="platform-feature">🗺️ まちあるきマップ</span>
+                </div>
+            </div>
+
+            <!-- API層 -->
+            <div class="api-layer">
+                <div class="api-title">🔗 統合API（任意参加）</div>
+                <div class="api-items">
+                    <span>店舗データ連携</span>
+                    <span>|</span>
+                    <span>検索インデックス</span>
+                    <span>|</span>
+                    <span>通知配信</span>
+                    <span>|</span>
+                    <span>レビュー連携</span>
+                </div>
+            </div>
+
+            <div class="arrows">↓ ↑</div>
+            <div class="arrow-label">データ同期（参加店舗のみ）</div>
+
+            <!-- カテゴリ別 -->
+            <div class="categories">
+                <!-- 農家 -->
+                <div class="category category-farmers">
+                    <div class="category-header">
+                        🌾 農家・生産者
+                    </div>
+                    <div class="category-body">
+                        <p class="category-desc">栽培記録 × QRコード × HP自動生成</p>
+                        <div class="shops-grid">
+                            <div class="shop-item">
+                                <div class="shop-icon">🍅</div>
+                                <div class="shop-name">野菜農家</div>
+                                <div class="shop-example">栽培記録・出荷情報</div>
+                            </div>
+                            <div class="shop-item">
+                                <div class="shop-icon">🍇</div>
+                                <div class="shop-name">果樹園</div>
+                                <div class="shop-example">収穫時期・品種紹介</div>
+                            </div>
+                            <div class="shop-item">
+                                <div class="shop-icon">🌾</div>
+                                <div class="shop-name">米農家</div>
+                                <div class="shop-example">田んぼの記録</div>
+                            </div>
+                            <div class="shop-item">
+                                <div class="shop-icon">🐔</div>
+                                <div class="shop-name">畜産・養鶏</div>
+                                <div class="shop-example">飼育環境・こだわり</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 小さなお店 -->
+                <div class="category category-shops">
+                    <div class="category-header">
+                        🏪 小さなお店・工房
+                    </div>
+                    <div class="category-body">
+                        <p class="category-desc">制作記録 × QRコード × HP自動生成</p>
+                        <div class="shops-grid">
+                            <div class="shop-item">
+                                <div class="shop-icon">🥖</div>
+                                <div class="shop-name">パン屋</div>
+                                <div class="shop-example">今日のパン・製造工程</div>
+                            </div>
+                            <div class="shop-item">
+                                <div class="shop-icon">☕</div>
+                                <div class="shop-name">珈琲焙煎所</div>
+                                <div class="shop-example">豆の産地・焙煎記録</div>
+                            </div>
+                            <div class="shop-item">
+                                <div class="shop-icon">🍰</div>
+                                <div class="shop-name">菓子店</div>
+                                <div class="shop-example">本日のケーキ・素材</div>
+                            </div>
+                            <div class="shop-item">
+                                <div class="shop-icon">🍶</div>
+                                <div class="shop-name">酒屋</div>
+                                <div class="shop-example">入荷情報・蔵元紹介</div>
+                            </div>
+                            <div class="shop-item">
+                                <div class="shop-icon">💐</div>
+                                <div class="shop-name">花屋</div>
+                                <div class="shop-example">入荷情報・手入れ方法</div>
+                            </div>
+                            <div class="shop-item">
+                                <div class="shop-icon">🧵</div>
+                                <div class="shop-name">手芸・工房</div>
+                                <div class="shop-example">制作過程・素材紹介</div>
+                            </div>
+                            <div class="shop-item">
+                                <div class="shop-icon">📚</div>
+                                <div class="shop-name">古本屋</div>
+                                <div class="shop-example">入荷・店主おすすめ</div>
+                            </div>
+                            <div class="shop-item">
+                                <div class="shop-icon">🎨</div>
+                                <div class="shop-name">アトリエ</div>
+                                <div class="shop-example">作品紹介・制作記録</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 共通機能 -->
+            <div class="common-features">
+                <div class="common-title">📱 各店舗アプリの共通機能（自己完結型）</div>
+                <div class="features-grid">
+                    <div class="feature-item">
+                        <div class="feature-icon">📝</div>
+                        <div class="feature-name">記録</div>
+                        <div class="feature-desc">写真＋コメントで<br>日々の活動を記録</div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">📱</div>
+                        <div class="feature-name">QRコード</div>
+                        <div class="feature-desc">商品・店頭に貼って<br>情報を届ける</div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">🌐</div>
+                        <div class="feature-name">HP自動生成</div>
+                        <div class="feature-desc">AIが写真から<br>ページを作成</div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">📦</div>
+                        <div class="feature-name">出荷・在庫</div>
+                        <div class="feature-desc">今日の商品を<br>かんたん更新</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- QRフロー -->
+            <div class="qr-section">
+                <div class="qr-title">🔗 QRコードでつながる体験</div>
+                <div class="qr-flow">
+                    <div class="qr-step">
+                        <div class="qr-icon">🏷️</div>
+                        <div class="qr-label">商品にQR<br>シールを貼る</div>
+                    </div>
+                    <div class="qr-arrow">→</div>
+                    <div class="qr-step">
+                        <div class="qr-icon">📱</div>
+                        <div class="qr-label">お客さんが<br>スキャン</div>
+                    </div>
+                    <div class="qr-arrow">→</div>
+                    <div class="qr-step">
+                        <div class="qr-icon">📖</div>
+                        <div class="qr-label">ストーリー<br>ページ表示</div>
+                    </div>
+                    <div class="qr-arrow">→</div>
+                    <div class="qr-step">
+                        <div class="qr-icon">⭐</div>
+                        <div class="qr-label">お店を<br>フォロー</div>
+                    </div>
+                    <div class="qr-arrow">→</div>
+                    <div class="qr-step">
+                        <div class="qr-icon">🔔</div>
+                        <div class="qr-label">新着情報<br>が届く</div>
+                    </div>
+                </div>
+
+                <!-- 具体例 -->
+                <div class="examples">
+                    <div class="example-card">
+                        <div class="example-title">🍅 農家の場合</div>
+                        <div class="example-content">
+                            トマトのパックにQR<br>
+                            → 栽培記録ページ<br>
+                            → 「1/10 色づいてきました」<br>
+                            → 農家をフォロー
+                        </div>
+                    </div>
+                    <div class="example-card">
+                        <div class="example-title">🥖 パン屋の場合</div>
+                        <div class="example-content">
+                            店頭POPにQR<br>
+                            → 今日のパン一覧<br>
+                            → 「国産小麦100%」<br>
+                            → お店をフォロー
+                        </div>
+                    </div>
+                    <div class="example-card">
+                        <div class="example-title">☕ 焙煎所の場合</div>
+                        <div class="example-content">
+                            コーヒー袋にQR<br>
+                            → 豆の産地・焙煎日<br>
+                            → 「エチオピア浅煎り」<br>
+                            → 次回入荷通知
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 凡例 -->
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #2d5a27;"></div>
+                    <span>統合プラットフォーム</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #e8f5e9; border: 1px solid #2d5a27;"></div>
+                    <span>農家・生産者</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #e3f2fd; border: 1px solid #1565c0;"></div>
+                    <span>小さなお店</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #e8f5e9; border: 2px dashed #4a7c42;"></div>
+                    <span>API連携（任意）</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

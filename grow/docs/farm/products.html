@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>今週の野菜 | 山田農園</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --rosso: #C41E3A;
+            --verde: #2D5A27;
+            --verde-light: #4A7C42;
+            --bianco: #FDF8F3;
+            --oro: #D4A853;
+            --terra: #8B7355;
+            --text-dark: #2C2416;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: var(--bianco);
+            color: var(--text-dark);
+            line-height: 1.8;
+            padding-top: 105px;
+        }
+
+        /* サンプルバナー */
+        .sample-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(90deg, var(--rosso) 0%, #E85A5A 50%, var(--rosso) 100%);
+            color: white;
+            text-align: center;
+            padding: 0.6rem 1rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            z-index: 10000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .sample-banner span {
+            background: white;
+            color: var(--rosso);
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            margin-right: 0.5rem;
+            font-weight: 700;
+            font-size: 0.75rem;
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            top: 45px;
+            left: 0;
+            right: 0;
+            background: rgba(253, 248, 243, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 9999;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+        }
+
+        .nav-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0.8rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-logo {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--verde);
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-dark);
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: color 0.3s;
+            position: relative;
+        }
+
+        .nav-links a:hover {
+            color: var(--verde);
+        }
+
+        .nav-links a.active {
+            color: var(--verde);
+            font-weight: 500;
+        }
+
+        .nav-links a.active::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--oro);
+        }
+
+        /* Page Header */
+        .page-header {
+            background: var(--verde);
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+
+        .page-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: clamp(2rem, 6vw, 3rem);
+            font-weight: 600;
+            color: var(--bianco);
+            margin-bottom: 0.5rem;
+        }
+
+        .page-subtitle {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.1rem;
+            font-style: italic;
+            color: var(--oro);
+        }
+
+        /* Update Info */
+        .update-info {
+            background: #F5EDE3;
+            padding: 1rem 2rem;
+            text-align: center;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .update-date {
+            font-size: 0.95rem;
+            color: var(--terra);
+        }
+
+        .update-date strong {
+            color: var(--verde);
+        }
+
+        /* Products Section */
+        .products {
+            padding: 4rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .product-card {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+            transition: transform 0.4s ease, box-shadow 0.4s ease;
+        }
+
+        .product-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 50px rgba(0,0,0,0.15);
+        }
+
+        .product-image {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+        }
+
+        .product-info {
+            padding: 1.5rem;
+        }
+
+        .product-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.6rem;
+            font-weight: 600;
+            color: var(--verde);
+            margin-bottom: 0.2rem;
+        }
+
+        .product-name-it {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1rem;
+            font-style: italic;
+            color: var(--terra);
+            margin-bottom: 1rem;
+        }
+
+        .product-desc {
+            font-size: 0.95rem;
+            color: var(--text-dark);
+            margin-bottom: 1rem;
+        }
+
+        .product-tag {
+            display: inline-block;
+            background: var(--bianco);
+            border: 1px solid var(--oro);
+            color: var(--terra);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        /* No Products Message */
+        .no-products {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--terra);
+        }
+
+        .no-products-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--text-dark);
+            color: var(--bianco);
+            text-align: center;
+            padding: 3rem 2rem;
+            margin-top: 2rem;
+        }
+
+        .footer-logo {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--oro);
+            margin-bottom: 0.5rem;
+        }
+
+        .footer-tagline {
+            font-family: 'Cormorant Garamond', serif;
+            font-style: italic;
+            opacity: 0.9;
+            margin-bottom: 1.5rem;
+        }
+
+        .italian-flag {
+            display: flex;
+            justify-content: center;
+            gap: 0;
+            margin-bottom: 1.5rem;
+        }
+
+        .flag-stripe {
+            width: 35px;
+            height: 8px;
+        }
+
+        .flag-green { background: var(--verde); border-radius: 4px 0 0 4px; }
+        .flag-white { background: white; }
+        .flag-red { background: var(--rosso); border-radius: 0 4px 4px 0; }
+
+        .copyright {
+            font-size: 0.85rem;
+            opacity: 0.6;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            body {
+                padding-top: 95px;
+            }
+
+            .nav-inner {
+                padding: 0.6rem 1rem;
+            }
+
+            .nav-logo {
+                font-size: 1.2rem;
+            }
+
+            .nav-links {
+                gap: 0.8rem;
+                font-size: 0.85rem;
+            }
+
+            .products {
+                padding: 2rem 1rem;
+            }
+
+            .product-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- サンプルバナー -->
+    <div class="sample-banner">
+        <span>SAMPLE</span>
+        これはデモ用のサンプルページです。実際の農園とは関係ありません。
+    </div>
+
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-inner">
+            <a href="index.html" class="nav-logo">山田農園</a>
+            <ul class="nav-links">
+                <li><a href="index.html">ホーム</a></li>
+                <li><a href="products.html" class="active">今週の野菜</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <header class="page-header">
+        <h1 class="page-title">今週の野菜</h1>
+        <p class="page-subtitle">Le verdure della settimana</p>
+    </header>
+
+    <!-- Update Info -->
+    <div class="update-info">
+        <p class="update-date">
+            <strong>更新日：2025年1月15日</strong> ｜ 
+            直売所・マルシェにてお求めいただけます
+        </p>
+    </div>
+
+    <!-- ============================================
+         ↓↓↓ 野菜の追加・削除はここを編集 ↓↓↓
+         ============================================ -->
+    <section class="products">
+        <div class="product-grid">
+
+            <!-- 野菜1: アーティチョーク -->
+            <article class="product-card">
+                <img src="images/artichoke.jpg" alt="アーティチョーク" class="product-image">
+                <div class="product-info">
+                    <h2 class="product-name">アーティチョーク</h2>
+                    <p class="product-name-it">Carciofo</p>
+                    <p class="product-desc">
+                        イタリア料理に欠かせない野菜。
+                        ほくほくとした食感と独特の風味が魅力。
+                        グリルやフリット、パスタにどうぞ。
+                    </p>
+                    <span class="product-tag">🌿 旬の野菜</span>
+                </div>
+            </article>
+
+            <!-- 野菜2: 花ズッキーニ -->
+            <article class="product-card">
+                <img src="images/zucchini-flower.jpg" alt="花ズッキーニ" class="product-image">
+                <div class="product-info">
+                    <h2 class="product-name">花ズッキーニ</h2>
+                    <p class="product-name-it">Fiori di Zucca</p>
+                    <p class="product-desc">
+                        イタリアでは定番の食材。
+                        フリットやリゾットの具材として
+                        華やかな一品に仕上がります。
+                    </p>
+                    <span class="product-tag">✨ 希少</span>
+                </div>
+            </article>
+
+            <!-- 野菜3: トマト -->
+            <article class="product-card">
+                <img src="images/tomato.jpg" alt="トマト" class="product-image">
+                <div class="product-info">
+                    <h2 class="product-name">ミニトマト</h2>
+                    <p class="product-name-it">Pomodorini</p>
+                    <p class="product-desc">
+                        太陽をたっぷり浴びて育った
+                        甘みと酸味のバランスが絶妙なトマト。
+                        そのままでも、料理にも。
+                    </p>
+                    <span class="product-tag">🍅 人気</span>
+                </div>
+            </article>
+
+            <!-- 野菜4: パプリカ -->
+            <article class="product-card">
+                <img src="images/pepper.jpg" alt="パプリカ" class="product-image">
+                <div class="product-info">
+                    <h2 class="product-name">パプリカ</h2>
+                    <p class="product-name-it">Peperone</p>
+                    <p class="product-desc">
+                        肉厚で甘みたっぷり。
+                        グリルやサラダ、ピクルスなど
+                        様々な料理でお楽しみください。
+                    </p>
+                    <span class="product-tag">🫑 肉厚</span>
+                </div>
+            </article>
+
+        </div>
+    </section>
+    <!-- ============================================
+         ↑↑↑ 野菜の追加・削除はここを編集 ↑↑↑
+         ============================================ -->
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-logo">山田農園</div>
+        <p class="footer-tagline">Dalla terra alla tavola — 畑から食卓へ</p>
+        <div class="italian-flag">
+            <div class="flag-stripe flag-green"></div>
+            <div class="flag-stripe flag-white"></div>
+            <div class="flag-stripe flag-red"></div>
+        </div>
+        <p class="copyright">© 2025 山田農園 Yamada Farm</p>
+    </footer>
+</body>
+</html>

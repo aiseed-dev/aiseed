@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>aiseed プラットフォーム概念図</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2d5a27;
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 2rem;
+        }
+
+        .diagram {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        /* 統合プラットフォーム */
+        .platform {
+            background: linear-gradient(135deg, #2d5a27 0%, #4a7c42 100%);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            color: white;
+        }
+
+        .platform-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 0.3rem;
+        }
+
+        .platform-subtitle {
+            text-align: center;
+            opacity: 0.9;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .platform-features {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .platform-feature {
+            background: rgba(255,255,255,0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+
+        /* ユーザー層 */
+        .users {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .user-group {
+            background: #fff8e7;
+            border: 2px solid #d4a853;
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            text-align: center;
+            min-width: 140px;
+        }
+
+        .user-icon {
+            font-size: 2rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .user-label {
+            font-weight: 500;
+            color: #8b7355;
+        }
+
+        /* 矢印 */
+        .arrows {
+            display: flex;
+            justify-content: center;
+            margin: 1rem 0;
+            color: #2d5a27;
+            font-size: 1.5rem;
+        }
+
+        .arrow-label {
+            font-size: 0.75rem;
+            color: #666;
+            text-align: center;
+            margin-top: -0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* API層 */
+        .api-layer {
+            background: #e8f5e9;
+            border: 2px dashed #4a7c42;
+            border-radius: 12px;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            text-align: center;
+        }
+
+        .api-title {
+            font-weight: 500;
+            color: #2d5a27;
+            margin-bottom: 0.5rem;
+        }
+
+        .api-items {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            font-size: 0.85rem;
+            color: #555;
+        }
+
+        /* 農家アプリ群 */
+        .farms-section {
+            margin-top: 1.5rem;
+        }
+
+        .farms-title {
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .farms-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .farm-app {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 12px;
+            padding: 1rem;
+            transition: all 0.3s;
+        }
+
+        .farm-app:hover {
+            border-color: #2d5a27;
+            box-shadow: 0 5px 20px rgba(45,90,39,0.15);
+        }
+
+        .farm-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.8rem;
+            padding-bottom: 0.8rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .farm-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #4a7c42 0%, #2d5a27 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .farm-name {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .farm-type {
+            font-size: 0.75rem;
+            color: #888;
+        }
+
+        .farm-features {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .farm-feature {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: #555;
+        }
+
+        .farm-feature-icon {
+            width: 20px;
+            text-align: center;
+        }
+
+        /* QR説明 */
+        .qr-section {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #eee;
+        }
+
+        .qr-flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .qr-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .qr-icon {
+            width: 60px;
+            height: 60px;
+            background: #f5f5f5;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+        }
+
+        .qr-label {
+            font-size: 0.8rem;
+            color: #666;
+            text-align: center;
+        }
+
+        .qr-arrow {
+            color: #ccc;
+            font-size: 1.5rem;
+        }
+
+        /* 凡例 */
+        .legend {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: #f9f9f9;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 1rem;
+            }
+
+            .diagram {
+                padding: 1rem;
+            }
+
+            .platform-features {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .qr-flow {
+                flex-direction: column;
+            }
+
+            .qr-arrow {
+                transform: rotate(90deg);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌱 aiseed プラットフォーム概念図</h1>
+        <p class="subtitle">農家アプリと統合プラットフォームの関係</p>
+
+        <div class="diagram">
+            <!-- ユーザー層 -->
+            <div class="users">
+                <div class="user-group">
+                    <div class="user-icon">👨‍👩‍👧‍👦</div>
+                    <div class="user-label">消費者</div>
+                </div>
+                <div class="user-group">
+                    <div class="user-icon">🍽️</div>
+                    <div class="user-label">飲食店</div>
+                </div>
+                <div class="user-group">
+                    <div class="user-icon">🏪</div>
+                    <div class="user-label">直売所</div>
+                </div>
+            </div>
+
+            <div class="arrows">↓ ↑</div>
+            <div class="arrow-label">検索・フォロー・情報取得</div>
+
+            <!-- 統合プラットフォーム -->
+            <div class="platform">
+                <div class="platform-title">🌍 aiseed 統合プラットフォーム</div>
+                <div class="platform-subtitle">消費者と農家をつなぐ</div>
+                <div class="platform-features">
+                    <span class="platform-feature">🔍 農家を探す</span>
+                    <span class="platform-feature">📍 近くの直売所</span>
+                    <span class="platform-feature">🥬 旬の野菜</span>
+                    <span class="platform-feature">⭐ お気に入り</span>
+                    <span class="platform-feature">📰 農家の声</span>
+                </div>
+            </div>
+
+            <!-- API層 -->
+            <div class="api-layer">
+                <div class="api-title">🔗 統合API（任意参加）</div>
+                <div class="api-items">
+                    <span>農家データ連携</span>
+                    <span>|</span>
+                    <span>検索インデックス</span>
+                    <span>|</span>
+                    <span>通知配信</span>
+                </div>
+            </div>
+
+            <div class="arrows">↓ ↑</div>
+            <div class="arrow-label">データ同期（参加農家のみ）</div>
+
+            <!-- 農家アプリ群 -->
+            <div class="farms-section">
+                <div class="farms-title">各農家の独立アプリ（自己完結型）</div>
+                <div class="farms-grid">
+                    <div class="farm-app">
+                        <div class="farm-header">
+                            <div class="farm-icon">🍅</div>
+                            <div>
+                                <div class="farm-name">山田農園</div>
+                                <div class="farm-type">イタリア野菜</div>
+                            </div>
+                        </div>
+                        <div class="farm-features">
+                            <div class="farm-feature">
+                                <span class="farm-feature-icon">📝</span>
+                                <span>栽培記録</span>
+                            </div>
+                            <div class="farm-feature">
+                                <span class="farm-feature-icon">📱</span>
+                                <span>QRコード生成</span>
+                            </div>
+                            <div class="farm-feature">
+                                <span class="farm-feature-icon">🌐</span>
+                                <span>HP自動生成</span>
+                            </div>
+                            <div class="farm-feature">
+                                <span class="farm-feature-icon">📦</span>
+                                <span>出荷管理</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="farm-app">
+                        <div class="farm-header">
+                            <div class="farm-icon">🥕</div>
+                            <div>
+                                <div class="farm-name">佐藤ファーム</div>
+                                <div class="farm-type">有機野菜</div>
+                            </div>
+                        </div>
+                        <div class="farm-features">
+                            <div class="farm-feature">
+                                <span class="farm-feature-icon">📝</span>
+                                <span>栽培記録</span>
+                            </div>
+                            <div class="farm-feature">
+                                <span class="farm-feature-icon">📱</span>
+                                <span>QRコード生成</span>
+                            </div>
+                            <div class="farm-feature">
+                                <span class="farm-feature-icon">🌐</span>
+                                <span>HP自動生成</span>
+                            </div>
+                            <div class="farm-feature">
+                                <span class="farm-feature-icon">📦</span>
+                                <span>出荷管理</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="farm-app">
+                        <div class="farm-header">
+                            <div class="farm-icon">🍇</div>
+                            <div>
+                                <div class="farm-name">田中農園</div>
+                                <div class="farm-type">果樹園</div>
+                            </div>
+                        </div>
+                        <div class="farm-features">
+                            <div class="farm-feature">
+                                <span class="farm-feature-icon">📝</span>
+                                <span>栽培記録</span>
+                            </div>
+                            <div class="farm-feature">
+                                <span class="farm-feature-icon">📱</span>
+                                <span>QRコード生成</span>
+                            </div>
+                            <div class="farm-feature">
+                                <span class="farm-feature-icon">🌐</span>
+                                <span>HP自動生成</span>
+                            </div>
+                            <div class="farm-feature">
+                                <span class="farm-feature-icon">📦</span>
+                                <span>出荷管理</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="farm-app" style="border-style: dashed; opacity: 0.6;">
+                        <div class="farm-header">
+                            <div class="farm-icon" style="background: #ccc;">➕</div>
+                            <div>
+                                <div class="farm-name">新規農家</div>
+                                <div class="farm-type">参加募集中</div>
+                            </div>
+                        </div>
+                        <div class="farm-features">
+                            <div class="farm-feature" style="justify-content: center; color: #999;">
+                                <span>同じ機能を持った</span>
+                            </div>
+                            <div class="farm-feature" style="justify-content: center; color: #999;">
+                                <span>独立アプリを作成</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- QRフロー -->
+            <div class="qr-section">
+                <div class="qr-flow">
+                    <div class="qr-step">
+                        <div class="qr-icon">🥬</div>
+                        <div class="qr-label">野菜にQR<br>シールを貼る</div>
+                    </div>
+                    <div class="qr-arrow">→</div>
+                    <div class="qr-step">
+                        <div class="qr-icon">📱</div>
+                        <div class="qr-label">消費者が<br>スキャン</div>
+                    </div>
+                    <div class="qr-arrow">→</div>
+                    <div class="qr-step">
+                        <div class="qr-icon">📖</div>
+                        <div class="qr-label">栽培記録<br>ページ表示</div>
+                    </div>
+                    <div class="qr-arrow">→</div>
+                    <div class="qr-step">
+                        <div class="qr-icon">⭐</div>
+                        <div class="qr-label">農家を<br>フォロー</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 凡例 -->
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #2d5a27;"></div>
+                    <span>統合プラットフォーム</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: white; border: 2px solid #ddd;"></div>
+                    <span>農家アプリ（独立）</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #e8f5e9; border: 2px dashed #4a7c42;"></div>
+                    <span>API連携（任意）</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

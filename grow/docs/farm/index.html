@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>山田農園 - 高松市の自然農法イタリア野菜</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --rosso: #C41E3A;
+            --verde: #2D5A27;
+            --verde-light: #4A7C42;
+            --bianco: #FDF8F3;
+            --oro: #D4A853;
+            --terra: #8B7355;
+            --text-dark: #2C2416;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: var(--bianco);
+            color: var(--text-dark);
+            line-height: 1.8;
+            padding-top: 105px;
+        }
+
+        /* サンプルバナー */
+        .sample-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(90deg, var(--rosso) 0%, #E85A5A 50%, var(--rosso) 100%);
+            color: white;
+            text-align: center;
+            padding: 0.6rem 1rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            z-index: 10000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .sample-banner span {
+            background: white;
+            color: var(--rosso);
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            margin-right: 0.5rem;
+            font-weight: 700;
+            font-size: 0.75rem;
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            top: 45px;
+            left: 0;
+            right: 0;
+            background: rgba(253, 248, 243, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 9999;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+        }
+
+        .nav-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0.8rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-logo {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--verde);
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-dark);
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: color 0.3s;
+            position: relative;
+        }
+
+        .nav-links a:hover {
+            color: var(--verde);
+        }
+
+        .nav-links a.active {
+            color: var(--verde);
+            font-weight: 500;
+        }
+
+        .nav-links a.active::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--oro);
+        }
+
+        /* Hero Section */
+        .hero {
+            height: 80vh;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .hero-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url('images/flowers.jpg');
+            background-size: cover;
+            background-position: center;
+            filter: brightness(0.7);
+        }
+
+        .hero-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(
+                180deg, 
+                rgba(45, 90, 39, 0.4) 0%, 
+                rgba(44, 36, 22, 0.6) 100%
+            );
+        }
+
+        .hero-content {
+            text-align: center;
+            z-index: 1;
+            padding: 2rem;
+            animation: fadeInUp 1.2s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .farm-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: clamp(3rem, 10vw, 6rem);
+            font-weight: 600;
+            color: var(--bianco);
+            letter-spacing: 0.15em;
+            margin-bottom: 0.3rem;
+            text-shadow: 2px 4px 30px rgba(0,0,0,0.5);
+        }
+
+        .farm-name-sub {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: clamp(1rem, 3vw, 1.5rem);
+            font-weight: 400;
+            font-style: italic;
+            color: var(--oro);
+            letter-spacing: 0.4em;
+            margin-bottom: 2rem;
+            text-shadow: 1px 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .tagline {
+            font-size: 1.1rem;
+            color: rgba(253, 248, 243, 0.95);
+            max-width: 500px;
+            margin: 0 auto;
+            text-shadow: 1px 1px 5px rgba(0,0,0,0.3);
+        }
+
+        /* Section Common */
+        .section {
+            padding: 5rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: clamp(2rem, 5vw, 2.5rem);
+            font-weight: 600;
+            color: var(--verde);
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .section-subtitle {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1rem;
+            font-style: italic;
+            color: var(--oro);
+            text-align: center;
+            margin-bottom: 3rem;
+            letter-spacing: 0.1em;
+        }
+
+        /* About Section */
+        .about {
+            background: linear-gradient(180deg, var(--bianco) 0%, #F5EDE3 100%);
+        }
+
+        .about-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            align-items: center;
+        }
+
+        .about-image {
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+
+        .about-image img {
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+            display: block;
+            transition: transform 0.5s ease;
+        }
+
+        .about-image:hover img {
+            transform: scale(1.05);
+        }
+
+        .about-text h3 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.8rem;
+            color: var(--rosso);
+            margin-bottom: 1rem;
+        }
+
+        .about-text p {
+            font-size: 1.05rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .natural-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--verde);
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 50px;
+            font-size: 0.95rem;
+        }
+
+        /* Products CTA Section */
+        .products-cta {
+            background: var(--verde);
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+
+        .products-cta .section-title {
+            color: var(--bianco);
+        }
+
+        .products-cta .section-subtitle {
+            color: rgba(253, 248, 243, 0.8);
+            margin-bottom: 2rem;
+        }
+
+        .cta-button {
+            display: inline-block;
+            background: var(--oro);
+            color: var(--text-dark);
+            padding: 1rem 3rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 1.1rem;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        /* Gallery Section */
+        .gallery {
+            background: #F5EDE3;
+            padding: 5rem 2rem;
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .gallery-item {
+            border-radius: 8px;
+            overflow: hidden;
+            aspect-ratio: 1;
+        }
+
+        .gallery-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.4s ease;
+        }
+
+        .gallery-item:hover img {
+            transform: scale(1.1);
+        }
+
+        .gallery-item:nth-child(1) {
+            grid-column: span 2;
+            grid-row: span 2;
+        }
+
+        /* Where to Buy Section */
+        .where-to-buy {
+            background: var(--bianco);
+        }
+
+        .location-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .location-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2.5rem 2rem;
+            text-align: center;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+            border-bottom: 5px solid var(--oro);
+            transition: transform 0.3s ease;
+        }
+
+        .location-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .location-icon {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, var(--verde) 0%, var(--verde-light) 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 1.8rem;
+        }
+
+        .location-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--verde);
+            margin-bottom: 0.8rem;
+        }
+
+        .location-desc {
+            color: var(--terra);
+            font-size: 0.95rem;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--text-dark);
+            color: var(--bianco);
+            text-align: center;
+            padding: 3rem 2rem;
+        }
+
+        .footer-logo {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--oro);
+            margin-bottom: 0.5rem;
+        }
+
+        .footer-tagline {
+            font-family: 'Cormorant Garamond', serif;
+            font-style: italic;
+            opacity: 0.9;
+            margin-bottom: 1.5rem;
+        }
+
+        .italian-flag {
+            display: flex;
+            justify-content: center;
+            gap: 0;
+            margin-bottom: 1.5rem;
+        }
+
+        .flag-stripe {
+            width: 35px;
+            height: 8px;
+        }
+
+        .flag-green { background: var(--verde); border-radius: 4px 0 0 4px; }
+        .flag-white { background: white; }
+        .flag-red { background: var(--rosso); border-radius: 0 4px 4px 0; }
+
+        .copyright {
+            font-size: 0.85rem;
+            opacity: 0.6;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .about-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .about-image {
+                order: -1;
+            }
+            
+            .gallery-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .gallery-item:nth-child(1) {
+                grid-column: span 2;
+                grid-row: span 1;
+                aspect-ratio: 16/9;
+            }
+
+            .nav-links {
+                gap: 1rem;
+            }
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding-top: 95px;
+            }
+
+            .nav-inner {
+                padding: 0.6rem 1rem;
+            }
+
+            .nav-logo {
+                font-size: 1.2rem;
+            }
+
+            .nav-links {
+                gap: 0.8rem;
+                font-size: 0.85rem;
+            }
+
+            .section {
+                padding: 3rem 1.5rem;
+            }
+            
+            .gallery-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 0.5rem;
+            }
+
+            .preview-thumb {
+                width: 80px;
+                height: 80px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- サンプルバナー -->
+    <div class="sample-banner">
+        <span>SAMPLE</span>
+        これはデモ用のサンプルページです。実際の農園とは関係ありません。
+    </div>
+
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-inner">
+            <a href="index.html" class="nav-logo">山田農園</a>
+            <ul class="nav-links">
+                <li><a href="index.html" class="active">ホーム</a></li>
+                <li><a href="products.html">今週の野菜</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-bg"></div>
+        <div class="hero-overlay"></div>
+        
+        <div class="hero-content">
+            <h1 class="farm-name">山田農園</h1>
+            <p class="farm-name-sub">YAMADA FARM</p>
+            <p class="tagline">高松の太陽と大地が育む<br>自然農法のイタリア野菜</p>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section class="section about">
+        <h2 class="section-title">私たちのこだわり</h2>
+        <p class="section-subtitle">Il nostro impegno</p>
+        
+        <div class="about-grid">
+            <div class="about-image">
+                <img src="images/artichoke-field.jpg" alt="畑で育つアーティチョーク">
+            </div>
+            <div class="about-text">
+                <h3>Agricoltura Naturale</h3>
+                <p>
+                    香川県高松市の温暖な気候のもと、自然農法でイタリア野菜を育てています。
+                </p>
+                <p>
+                    化学肥料や農薬に頼らず、土壌の微生物や虫たちと共存しながら、
+                    野菜本来の力強い味わいを引き出します。
+                    畑には様々な花が咲き、蜂や蝶が飛び交う
+                    生命力あふれる環境で野菜たちは育っています。
+                </p>
+                <div class="natural-badge">
+                    🌱 自然農法で栽培
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Products CTA Section -->
+    <section class="products-cta">
+        <h2 class="section-title">今週の野菜</h2>
+        <p class="section-subtitle">毎週更新しています</p>
+        
+        <a href="products.html" class="cta-button">野菜を見る →</a>
+    </section>
+
+    <!-- Gallery Section -->
+    <section class="gallery">
+        <h2 class="section-title">畑の風景</h2>
+        <p class="section-subtitle">Dal nostro orto</p>
+        
+        <div class="gallery-grid">
+            <div class="gallery-item">
+                <img src="images/flowers.jpg" alt="畑に咲く花々">
+            </div>
+            <div class="gallery-item">
+                <img src="images/garlic.jpg" alt="にんにく">
+            </div>
+            <div class="gallery-item">
+                <img src="images/basil.jpg" alt="バジル">
+            </div>
+            <div class="gallery-item">
+                <img src="images/carrot-flower.jpg" alt="にんじんの花">
+            </div>
+            <div class="gallery-item">
+                <img src="images/zucchini.jpg" alt="ズッキーニ">
+            </div>
+        </div>
+    </section>
+
+    <!-- Where to Buy Section -->
+    <section class="section where-to-buy">
+        <h2 class="section-title">お買い求め場所</h2>
+        <p class="section-subtitle">Dove trovarci</p>
+        
+        <div class="location-cards">
+            <div class="location-card">
+                <div class="location-icon">🏪</div>
+                <h3 class="location-name">地元の直売所</h3>
+                <p class="location-desc">
+                    高松市内の直売所にて<br>
+                    朝採れの新鮮な野菜を販売しています
+                </p>
+            </div>
+            <div class="location-card">
+                <div class="location-icon">🎪</div>
+                <h3 class="location-name">マルシェ・朝市</h3>
+                <p class="location-desc">
+                    地域のマルシェや朝市に出店<br>
+                    旬の野菜をお届けします
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-logo">山田農園</div>
+        <p class="footer-tagline">Dalla terra alla tavola — 畑から食卓へ</p>
+        <div class="italian-flag">
+            <div class="flag-stripe flag-green"></div>
+            <div class="flag-stripe flag-white"></div>
+            <div class="flag-stripe flag-red"></div>
+        </div>
+        <p class="copyright">© 2025 山田農園 Yamada Farm</p>
+    </footer>
+</body>
+</html>
