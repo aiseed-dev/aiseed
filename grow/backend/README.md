@@ -8,8 +8,8 @@
 アプリ（Flutter）
     ↓ HTTP
 Linux サーバー（Python/FastAPI）
-    ↓ subprocess
-Claude Code CLI（Claude MAX）
+    ↓ Claude Agent SDK
+Claude MAX
     ↓
 HTML返却
 ```
@@ -25,10 +25,11 @@ source venv/bin/activate
 
 # 依存パッケージインストール
 pip install -r requirements.txt
-
-# Claude Code CLIがインストールされていることを確認
-claude --version
 ```
+
+**必要環境:**
+- Python 3.10以上
+- Claude Agent SDKはClaude Code CLIを自動バンドル
 
 ## 起動
 
@@ -78,6 +79,12 @@ POST /api/hp/modify
 
 - **内部テスト**: 認証なし（内部ネットワーク）
 - **クローズドテスト以降**: 認証を追加予定
+
+## 技術スタック
+
+- **FastAPI**: 非同期Webフレームワーク
+- **Claude Agent SDK**: Claude MAX連携（subprocess不要）
+- **Pydantic**: リクエスト/レスポンス検証
 
 ## TODO
 

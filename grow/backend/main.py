@@ -2,20 +2,20 @@
 Grow HP Builder - AIサーバー
 
 内部テスト用のシンプルなAPIサーバー。
-アプリからのリクエストを受けて、Claude MAXでHTMLを生成する。
+アプリからのリクエストを受けて、Claude Agent SDKでHTMLを生成する。
 """
 
-import subprocess
-import json
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
 
+from claude_agent_sdk import query, ClaudeAgentOptions, AssistantMessage, TextBlock
+
 app = FastAPI(
     title="Grow HP Builder API",
     description="農家向けホームページ作成AIサーバー",
-    version="0.1.0",
+    version="0.2.0",
 )
 
 # CORS設定（内部テスト用）
@@ -120,24 +120,21 @@ def build_modify_prompt(request: ModifyRequest) -> str:
 """
 
 
-def call_claude(prompt: str) -> str:
-    """Claude Code CLIを呼び出してレスポンスを取得"""
-    try:
-        result = subprocess.run(
-            ["claude", "-p", prompt, "--output-format", "text"],
-            capture_output=True,
-            text=True,
-            timeout=120,  # 2分タイムアウト
-        )
+async def call_claude(prompt: str) -> str:
+    """Claude Agent SDKを使ってレスポンスを取得"""
+    options = ClaudeAgentOptions(
+        max_turns=1,  # 1ターンで完了
+    )
 
-        if result.returncode != 0:
-            raise Exception(f"Claude CLI error: {result.stderr}")
+    result_text = ""
 
-        return result.stdout.strip()
-    except subprocess.TimeoutExpired:
-        raise Exception("Claude CLI timeout")
-    except FileNotFoundError:
-        raise Exception("Claude CLI not found. Please install claude-code.")
+    async for message in query(prompt=prompt, options=options):
+        if isinstance(message, AssistantMessage):
+            for block in message.content:
+                if isinstance(block, TextBlock):
+                    result_text += block.text
+
+    return result_text
 
 
 def extract_html(response: str) -> str:
@@ -160,7 +157,7 @@ def extract_html(response: str) -> str:
 @app.get("/")
 async def root():
     """ヘルスチェック"""
-    return {"status": "ok", "service": "Grow HP Builder API"}
+    return {"status": "ok", "service": "Grow HP Builder API", "version": "0.2.0"}
 
 
 @app.post("/api/hp/generate", response_model=HpResponse)
@@ -168,7 +165,7 @@ async def generate_hp(request: HpRequest):
     """ホームページHTMLを生成"""
     try:
         prompt = build_prompt(request)
-        response = call_claude(prompt)
+        response = await call_claude(prompt)
         html = extract_html(response)
 
         return HpResponse(html=html, success=True)
@@ -181,7 +178,7 @@ async def modify_hp(request: ModifyRequest):
     """ホームページHTMLを修正"""
     try:
         prompt = build_modify_prompt(request)
-        response = call_claude(prompt)
+        response = await call_claude(prompt)
         html = extract_html(response)
 
         return HpResponse(html=html, success=True)
