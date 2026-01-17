@@ -45,5 +45,10 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- 音声認識（HP作成機能） -->
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>ホームページ作成のために音声入力を使用します</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>音声入力のためにマイクを使用します</string>
 </dict>
 </plist>

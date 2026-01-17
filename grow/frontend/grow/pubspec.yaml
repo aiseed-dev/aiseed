@@ -49,6 +49,13 @@ dependencies:
   # UUID生成
   uuid: ^4.3.3
 
+  # HP Builder機能
+  speech_to_text: ^6.6.0      # 音声認識
+  webview_flutter: ^4.4.0     # HTMLプレビュー
+  share_plus: ^7.2.0          # ファイル共有
+  path_provider: ^2.1.0       # ファイルパス取得
+  http: ^1.2.0                # API通信
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
